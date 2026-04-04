@@ -46,7 +46,7 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   accent: '#002cf2',
   logoDark: '/lk-logo-dark.svg',
   accentDark: '#1fd5f9',
-  startButtonText: 'Start Interview',
+  startButtonText: 'Start Call',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',

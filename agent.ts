@@ -67,16 +67,16 @@ export default defineAgent({
       3. After 3-5 rounds, provide a very short summary feedback and end the interview.`,
     });
 
-    // 5. Session: Orchestrates the interaction loop (Optimized for Sarvam)
+    // 5. Session: Orchestrates the interaction loop (Optimized for Fast Response)
     const session = new voice.AgentSession({
       stt,
       llm,
       tts,
-      // VAD removed as per Sarvam best practices
-      turnDetection: 'stt', // Sarvam handles turn detection
+      vad: ctx.proc.userData.vad as silero.VAD, // Local VAD mapping
       turnHandling: {
+        turnDetection: 'vad', // Use local VAD for near-instant response
         endpointing: {
-          minDelay: 0.07, // 70ms processing delay
+          minDelay: 0.5, // 500ms silence before bot starts thinking
         },
       },
     });
