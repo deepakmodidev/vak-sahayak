@@ -1,3 +1,5 @@
+import { Paperclip, Loader2, FileText, Check } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 function WelcomeImage() {
@@ -21,13 +23,28 @@ function WelcomeImage() {
 interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: () => void;
+  onExtractResume: (file: File) => void;
+  resumeAttached: boolean;
+  isExtracting: boolean;
 }
 
 export const WelcomeView = ({
   startButtonText,
   onStartCall,
+  onExtractResume,
+  resumeAttached,
+  isExtracting,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onExtractResume(file);
+    }
+  };
+
   return (
     <div ref={ref}>
       <section className="bg-background flex flex-col items-center justify-center text-center">
@@ -37,13 +54,48 @@ export const WelcomeView = ({
           Chat live with your voice AI agent
         </p>
 
-        <Button
-          size="lg"
-          onClick={onStartCall}
-          className="mt-6 w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase"
-        >
-          {startButtonText}
-        </Button>
+        <div className="mt-6 flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              size="lg"
+              onClick={onStartCall}
+              className="w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase"
+            >
+              {resumeAttached ? 'Start Interview' : startButtonText}
+            </Button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf"
+              className="hidden"
+            />
+
+            <Button
+              variant="outline"
+              size="icon"
+              className={`rounded-full transition-all ${resumeAttached ? 'border-green-500 bg-green-500/10 text-green-500' : ''}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isExtracting}
+            >
+              {isExtracting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : resumeAttached ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          {resumeAttached && (
+            <p className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+              <FileText className="h-3 w-3" />
+              Resume Processed & Attached
+            </p>
+          )}
+        </div>
       </section>
 
       <div className="fixed bottom-5 left-0 flex w-full items-center justify-center">

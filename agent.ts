@@ -50,11 +50,26 @@ export default defineAgent({
       targetLanguageCode: 'en-IN',
     });
 
-    // 4. Agent Persona: Interview GPT
+    // 4. Connect to the room (First, so we can see metadata)
+    await ctx.connect();
+    console.log('Connected to room', ctx.room.name);
+
+    // 5. Fetch Resume Context from Participant Metadata
+    const user = Array.from(ctx.room.remoteParticipants.values())[0];
+    const resumeText = user?.metadata || '';
+    if (resumeText) {
+      console.log('Resume context detected! Personalizing interview...');
+    }
+
+    // 6. Agent Persona: Interview GPT (Personalized)
     const agent = new voice.Agent({
       instructions: `You are 'Interview GPT', a professional and encouraging AI interviewer.
       Your goal is to conduct a mock interview with the user.
       
+      ${resumeText ? `### USER RESUME CONTEXT:
+      ${resumeText}
+      Use the above resume to ask specific, targeted technical questions about their projects and experience.` : 'Ask the user which role they are interviewing for to begin.'}
+
       CORE RULES:
       - Ask exactly ONE short, one-liner question at a time.
       - Never list multiple questions or ask double-barrelled questions.
@@ -62,9 +77,10 @@ export default defineAgent({
       - Keep your responses very brief and professional.
       
       FLOW:
-      1. Start with a brief greeting and ask for their target role ONLY.
-      2. Ask technical or behavioral questions one by one based on their input.
-      3. After 3-5 rounds, provide a very short summary feedback and end the interview.`,
+      1. Warm Greeting: Acknowledge the user and their resume (if any).
+      2. Warmup: Ask one light introductory question (e.g., 'How are you?').
+      3. Interview Phase: Ask technical or behavioral questions one by one.
+      4. Closure: After 3-5 rounds, provide brief feedback and end the interview.`,
     });
 
     // 5. Session: Orchestrates the interaction loop (Optimized for Fast Response)
@@ -84,12 +100,11 @@ export default defineAgent({
     // 6. Start the session
     await session.start({ agent, room: ctx.room });
     
-    // 7. Connect to the room (after session is ready)
-    await ctx.connect();
-
     // Initial greeting triggered immediately
     session.generateReply({
-      instructions: 'Introduce yourself as Interview GPT and ask the user which role they are practicing for today.',
+      instructions: resumeText 
+        ? `Greet the user warmly, acknowledge that you've received their resume, and ask a light warmup question (e.g., 'How are you feeling today?' or 'Tell me a little about yourself') to get started.`
+        : 'Introduce yourself as Interview GPT and ask the user which role they are practicing for today.',
     });
 
     // --- Events & Feedback ---

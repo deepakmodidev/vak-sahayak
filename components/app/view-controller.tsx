@@ -30,9 +30,17 @@ const VIEW_MOTION_PROPS = {
 
 interface ViewControllerProps {
   appConfig: AppConfig;
+  onExtractResume: (file: File) => void;
+  resumeAttached: boolean;
+  isExtracting: boolean;
 }
 
-export function ViewController({ appConfig }: ViewControllerProps) {
+export function ViewController({
+  appConfig,
+  onExtractResume,
+  resumeAttached,
+  isExtracting,
+}: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const { resolvedTheme } = useTheme();
 
@@ -45,6 +53,9 @@ export function ViewController({ appConfig }: ViewControllerProps) {
           {...VIEW_MOTION_PROPS}
           startButtonText={appConfig.startButtonText}
           onStartCall={start}
+          onExtractResume={onExtractResume}
+          resumeAttached={resumeAttached}
+          isExtracting={isExtracting}
         />
       )}
       {/* Session view */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TokenSource } from 'livekit-client';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
 import { getSandboxTokenSource } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -27,11 +28,48 @@ interface AppProps {
 }
 
 export function App({ appConfig }: AppProps) {
+  const [resumeText, setResumeText] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  const handleExtractResume = async (file: File) => {
+    setIsExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/resume-extract', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to extract resume');
+      }
+
+      const data = await response.json();
+      setResumeText(data.text);
+      toast.success('Resume processed successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error('Could not process resume');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const tokenSource = useMemo(() => {
+    const endpoint = '/api/token';
+    // If we have resume text, we append it to the token request metadata
+    if (resumeText) {
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set('resume', resumeText);
+      return TokenSource.endpoint(url.toString());
+    }
+
     return typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string'
       ? getSandboxTokenSource(appConfig)
-      : TokenSource.endpoint('/api/token');
-  }, [appConfig]);
+      : TokenSource.endpoint(endpoint);
+  }, [appConfig, resumeText]);
 
   const session = useSession(
     tokenSource,
@@ -42,7 +80,12 @@ export function App({ appConfig }: AppProps) {
     <AgentSessionProvider session={session}>
       <AppSetup />
       <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController appConfig={appConfig} />
+        <ViewController
+          appConfig={appConfig}
+          onExtractResume={handleExtractResume}
+          resumeAttached={!!resumeText}
+          isExtracting={isExtracting}
+        />
       </main>
       <StartAudioButton label="Start Audio" />
       <Toaster
