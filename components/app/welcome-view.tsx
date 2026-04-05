@@ -59,9 +59,12 @@ export const WelcomeView = ({
             <Button
               size="lg"
               onClick={onStartCall}
-              className="w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase"
+              disabled={!resumeAttached}
+              className={`w-64 rounded-full font-mono text-xs font-bold tracking-wider uppercase transition-all ${
+                !resumeAttached ? 'cursor-not-allowed opacity-50' : 'opacity-100 shadow-lg'
+              }`}
             >
-              {resumeAttached ? 'Start Interview' : startButtonText}
+              {resumeAttached ? 'Start Interview' : 'Attach Resume to Start'}
             </Button>
 
             <input
