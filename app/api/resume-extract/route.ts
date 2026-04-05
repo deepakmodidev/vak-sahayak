@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
     const trimmedText = text.trim();
     console.log(`--- ✅ Extraction Success! (${trimmedText.length} chars) ---`);
 
-    // Limit text size to avoid JWT/Token overflow (e.g., first 5000 characters)
-    const truncatedText = trimmedText.substring(0, 5000);
+    // Safe to send large text — resume is dispatched via job metadata, not JWT
+    const truncatedText = trimmedText.substring(0, 20000);
 
     return NextResponse.json({ text: truncatedText });
   } catch (error: any) {

@@ -11,7 +11,7 @@ import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
-import { getSandboxTokenSource } from '@/lib/utils';
+
 import { toast } from 'sonner';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
@@ -58,18 +58,16 @@ export function App({ appConfig }: AppProps) {
   };
 
   const tokenSource = useMemo(() => {
-    const endpoint = '/api/token';
-    // If we have resume text, we append it to the token request metadata
-    if (resumeText) {
-      const url = new URL(endpoint, window.location.origin);
-      url.searchParams.set('resume', resumeText);
-      return TokenSource.endpoint(url.toString());
-    }
-
-    return typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string'
-      ? getSandboxTokenSource(appConfig)
-      : TokenSource.endpoint(endpoint);
-  }, [appConfig, resumeText]);
+    return TokenSource.custom(async () => {
+      const res = await fetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume: resumeText || '', room_config: {} }),
+      });
+      if (!res.ok) throw new Error('Token fetch failed');
+      return res.json();
+    });
+  }, [resumeText]);
 
   const session = useSession(
     tokenSource,

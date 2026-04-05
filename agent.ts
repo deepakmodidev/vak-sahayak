@@ -54,11 +54,16 @@ export default defineAgent({
     await ctx.connect();
     console.log('Connected to room', ctx.room.name);
 
-    // 5. Fetch Resume Context from Participant Metadata
-    const user = Array.from(ctx.room.remoteParticipants.values())[0];
-    const resumeText = user?.metadata || '';
-    if (resumeText) {
-      console.log('Resume context detected! Personalizing interview...');
+    // 5. Fetch Resume Context from Job Metadata (Official LiveKit Pattern)
+    let resumeText = '';
+    try {
+      const jobMeta = JSON.parse(ctx.job.metadata || '{}');
+      resumeText = jobMeta.resume || '';
+      if (resumeText) {
+        console.log(`--- 📄 Resume loaded from job metadata (${resumeText.length} chars) ---`);
+      }
+    } catch {
+      console.warn('--- ⚠️ No job metadata found ---');
     }
 
     // 6. Agent Persona: Interview GPT (Personalized)
