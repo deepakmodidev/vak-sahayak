@@ -1,21 +1,21 @@
+import { config } from 'dotenv';
+import { z } from 'zod';
 import {
   type JobContext,
   type JobProcess,
   ServerOptions,
   cli,
   defineAgent,
+  llm as llmHelper,
+  // Rename the helper here to keep your 'llm' variable clean
   voice,
-  llm as llmHelper, // Rename the helper here to keep your 'llm' variable clean
 } from '@livekit/agents';
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
-import { config } from 'dotenv';
+import { FORM_SCHEMAS } from './lib/form-schemas';
 
-// Load environment variables from .env.local exactly
 config({ path: '.env.local' });
-import { z } from 'zod';
-import { FORM_SCHEMAS, DEFAULT_SERVICE } from './lib/form-schemas';
 
 /**
  * 🏛️ Vak Sahayak - AI Government Form Assistant
@@ -28,38 +28,36 @@ export default defineAgent({
   },
 
   entry: async (ctx: JobContext) => {
-    const roomName = ctx.job.room?.name || "unknown";
+    const roomName = ctx.job.room?.name || 'unknown';
     console.log(`--- 🚀 New Job Received (ID: ${ctx.job.id}) ---`);
     console.log(`--- Connecting to room: ${roomName} ---`);
-    
+
     await ctx.connect();
     console.log(`--- ✅ Connected to room: ${ctx.room.name} ---`);
 
     // 1. Fetch Service Context Strictly (Fail Fast)
-    console.log(`--- [DEBUG] Raw Job Metadata: ${ctx.job.metadata} ---`);
-    
-    if (!ctx.job.metadata) {
-      throw new Error("❌ FAILED FAST: Job metadata is completely empty. Cannot determine service type.");
+    if (!ctx.job.metadata) throw new Error('❌ FAILED FAST: Job metadata is completely empty.');
+
+    let jobMeta: { serviceType?: string; branding?: string };
+    try {
+      jobMeta = JSON.parse(ctx.job.metadata);
+    } catch {
+      throw new Error('❌ FAILED FAST: Job metadata is not valid JSON.');
     }
 
-    const jobMeta = JSON.parse(ctx.job.metadata);
-    const serviceType = jobMeta.serviceType;
-
-    if (!serviceType) {
+    const { serviceType } = jobMeta;
+    if (!serviceType)
       throw new Error("❌ FAILED FAST: 'serviceType' is missing from Job Metadata.");
-    }
+    if (!FORM_SCHEMAS[serviceType])
+      throw new Error(`❌ FAILED FAST: Unknown service type: '${serviceType}'.`);
 
-    if (!FORM_SCHEMAS[serviceType]) {
-      throw new Error(`❌ FAILED FAST: Unknown service type requested: '${serviceType}'.`);
-    }
-
-    console.log(`--- ✅ [${ctx.job.id}] Service Type Detected: ${serviceType} ---`);
-    console.log(`--- 🛠️ Service Mode: ${serviceType.toUpperCase()} ---`);
+    console.log(`--- ✅ [${ctx.job.id}] Service Mode: ${serviceType.toUpperCase()} ---`);
 
     const currentSchema = FORM_SCHEMAS[serviceType];
-    const fieldIds = currentSchema.fields.map(f => f.id) as [string, ...string[]];
+    const fieldIds = currentSchema.fields.map((f) => f.id) as [string, ...string[]];
+    const encoder = new TextEncoder();
 
-    // 2. Defining Tools (using the renamed helper to avoid naming conflicts)
+    // 2. Defining Tools
     const updateFormField = llmHelper.tool({
       description: 'Update a specific field in the government form.',
       parameters: z.object({
@@ -67,55 +65,73 @@ export default defineAgent({
         value: z.string().describe('The information provided by the user'),
       }),
       execute: async ({ field, value }: { field: string; value: string }) => {
-        console.log(`--- 📝 [${serviceType}] Form Update: ${field} = ${value} ---`);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(JSON.stringify({ 
-          type: 'form_update', 
-          payload: { [field]: value } 
-        }));
-        await ctx.room.localParticipant?.publishData(data, { reliable: true });
+        console.log(`--- 📝 [${serviceType}] Update: ${field} = ${value} ---`);
+        const participant = ctx.room.localParticipant;
+        if (!participant)
+          return 'Error: Could not update the form as the assistant is disconnected.';
+
+        await participant.publishData(
+          encoder.encode(JSON.stringify({ type: 'form_update', payload: { [field]: value } })),
+          { reliable: true }
+        );
         return `Successfully updated ${field} to ${value}.`;
       },
     });
 
     const focusField = llmHelper.tool({
-      description: 'Signal that you are about to ask the user for a specific field. Call this BEFORE asking.',
+      description:
+        'Signal that you are about to ask the user for a specific field. Call this BEFORE asking.',
       parameters: z.object({
         field: z.enum(fieldIds).describe('The field you are about to focus on'),
       }),
       execute: async ({ field }: { field: string }) => {
         console.log(`--- 🎯 [${serviceType}] Focus: ${field} ---`);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(JSON.stringify({ 
-          type: 'form_focus', 
-          payload: { fieldId: field } 
-        }));
-        await ctx.room.localParticipant?.publishData(data, { reliable: true });
+        const participant = ctx.room.localParticipant;
+        if (!participant)
+          return 'Error: Could not focus the form as the assistant is disconnected.';
+
+        await participant.publishData(
+          encoder.encode(JSON.stringify({ type: 'form_focus', payload: { fieldId: field } })),
+          { reliable: true }
+        );
         return `UI focused on ${field}. You can now ask the question.`;
       },
     });
 
+    let formSubmitted = false;
     const submitForm = llmHelper.tool({
       description: 'Submit the final government form after all details are collected.',
       parameters: z.object({
-        confirmation: z.union([z.boolean(), z.string()]).describe('Whether the user confirmed the submission (accepts true/false or "true"/"false")'),
+        confirmation: z
+          .union([z.boolean(), z.string()])
+          .describe('Whether the user confirmed the submission'),
       }),
       execute: async ({ confirmation }: { confirmation: boolean | string }) => {
-        const isConfirmed = confirmation === true || confirmation === 'true';
-        if (!isConfirmed) return "Submission cancelled. Please confirm with the user first.";
+        if (formSubmitted) return 'The form has already been submitted. No further action needed.';
+        if (confirmation !== true && confirmation !== 'true')
+          return 'Submission cancelled. Please confirm with the user first.';
+
+        const participant = ctx.room.localParticipant;
+        if (!participant)
+          return 'Error: Could not submit the form as the assistant is disconnected.';
+
+        formSubmitted = true;
         console.log(`--- ✅ [${serviceType}] Form Submitted Successfully ---`);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(JSON.stringify({ type: 'form_submitted', payload: { status: 'success' } }));
-        await ctx.room.localParticipant?.publishData(data, { reliable: true });
-        return "The form has been submitted successfully to the portal.";
+        await participant.publishData(
+          encoder.encode(
+            JSON.stringify({ type: 'form_submitted', payload: { status: 'success' } })
+          ),
+          { reliable: true }
+        );
+        return 'The form has been submitted successfully to the portal.';
       },
     });
 
-    // 3. LLM: Groq (Exactly your pattern)
+    // 3. LLM: Groq
     const llm = new openai.LLM({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      model: 'llama-3.3-70b-versatile', // stable and production ready
+      // model: 'meta-llama/llama-4-scout-17b-16e-instruct', // latest but preview
       baseURL: 'https://api.groq.com/openai/v1',
-      apiKey: process.env.GROQ_API_KEY,
     });
 
     // 4. STT: Sarvam Saaras v3
@@ -132,36 +148,41 @@ export default defineAgent({
       targetLanguageCode: 'en-IN',
     });
 
-    // 6. Agent Instructions (Re-populated for Vak Sahayak with Dynamic Service)
+    // 6. Agent Instructions
+    const orderedFields = currentSchema.fields.map(
+      (f, i) => `${i + 1}. ${f.label} — field_id: "${f.id}"`
+    );
     const agent = new voice.Agent({
       instructions: `You are 'Vak Sahayak', a dedicated and patient AI assistant for Indian citizens helping with government forms.
-      
+
       CURRENT SERVICE: ${currentSchema.title}
       DESCRIPTION: ${currentSchema.description}
-      
+
       CORE INSTRUCTIONS:
       ${currentSchema.instructions}
-      
-      RELEVANT FIELDS TO COLLECT:
-      ${currentSchema.fields.map(f => `- ${f.label} (${f.id})`).join('\n')}
+
+      FIELDS TO COLLECT — IN THIS EXACT ORDER, NO EXCEPTIONS:
+      ${orderedFields.join('\n')}
 
       PERSONALITY:
       - Respected, professional, and helpful.
       - Use Hinglish (mix of Hindi and English).
-      
-      CORE RULES:
-      1. FOCUS BEFORE ASKING: You MUST call 'focus_field' for a specific field BEFORE you ask the user about it. This allows the UI to scroll and show the field in advance.
-      2. STRICT SEQUENTIAL ORDER: You MUST collect information in the exact order listed below. Do NOT skip any field.
-      3. NO ASSUMPTIONS: If a field is empty, you MUST ask for it. Even if information was partially provided, verify and fill every individual field ID.
-      4. ONE AT A TIME: Ask exactly ONE question at a time.
-      5. FILL IMMEDIATELY: As soon as the user provides an answer, call 'update_form_field'.
-      6. MANDATORY CONFIRMATION: Once ALL fields are filled, you MUST explicitly ask the user for permission to submit the form (e.g. "Saari jaankari mil gayi hai, kya main form submit kar doon?"). You may ONLY call 'submit_form' AFTER the user explicitly says YES or GIVES PERMISSION to submit.
-      
-      CRITICAL: Always check the current form state. If 'RELATION (F/H)' (relation_type) is empty, you must NOT move on to 'FATHER/SPOUSE' until it is filled.`,
-      tools: { update_form_field: updateFormField, focus_field: focusField, submit_form: submitForm },
+
+      STRICT RULES:
+      1. FOCUS FIRST: Call 'focus_field' with the field_id BEFORE asking the user for that field.
+      2. ONE AT A TIME: Ask for exactly ONE field at a time. Never combine questions.
+      3. FILL IMMEDIATELY: The moment the user answers, call 'update_form_field' before moving to the next field.
+      4. BLOCKING RULE — NO SKIPPING: You MUST complete field N before asking for field N+1. If field N is still empty (user has not answered), you MUST re-ask field N. You are NOT allowed to proceed to the next field until 'update_form_field' has been successfully called for the current field.
+      5. NO ASSUMPTIONS: Never assume or infer a field value. If the user did not directly state it, ask again.
+      6. SUBMIT ONLY WITH PERMISSION: Once ALL fields are filled, ask "Saari jaankari sahi hai, kya main form submit kar doon?" and only call 'submit_form' after the user explicitly says YES.`,
+      tools: {
+        update_form_field: updateFormField,
+        focus_field: focusField,
+        submit_form: submitForm,
+      },
     });
 
-    // 6. Session Orchestration (Hardened for stability)
+    // 7. Session Orchestration (Hardened for stability)
     const session = new voice.AgentSession({
       stt,
       llm,
@@ -175,10 +196,10 @@ export default defineAgent({
       },
     });
 
-    // 7. Start Session
+    // 8. Start Session
     await session.start({ agent, room: ctx.room });
-    
-    // 8. Greeting Orchestration (Exactly your pattern)
+
+    // 9. Greeting Orchestration (Exactly your pattern)
     const greet = async () => {
       console.log(`--- 👋 Triggering Greeting for ${currentSchema.title}... ---`);
       session.generateReply({
@@ -187,15 +208,29 @@ export default defineAgent({
     };
 
     // If a human is already here, greet immediately. Otherwise, wait for someone.
-    const humanParticipants = ctx.room.remoteParticipants.values();
-    if (Array.from(humanParticipants).length > 0) {
+    let greeted = false;
+    const greetOnce = () => {
+      if (greeted) return;
+      greeted = true;
       greet();
+    };
+
+    if (ctx.room.remoteParticipants.size > 0) {
+      greetOnce();
     } else {
       ctx.room.on('participantConnected', () => {
         console.log('--- 👤 Participant connected, greeting... ---');
-        greet();
+        greetOnce();
       });
     }
+
+    // Catch errors on source emitters to prevent ERR_UNHANDLED_ERROR crashes
+    tts.on('error', (err) => {
+      console.warn('⚠️ TTS Error (caught):', err);
+    });
+    llm.on('error', (err) => {
+      console.warn('⚠️ LLM Error (caught):', err);
+    });
 
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
       if (ev.isFinal) console.log('👤 User:', ev.transcript);
@@ -207,10 +242,19 @@ export default defineAgent({
   },
 });
 
-// 🚀 CLI Runner (Fully Aligned)
+// Catch leaked promise rejections from pipeline internals
+process.on('unhandledRejection', (reason) => {
+  console.warn(
+    '⚠️ Unhandled Rejection (caught):',
+    reason instanceof Error ? reason.message : reason
+  );
+});
+
+// 🚀 CLI Runner
 cli.runApp(
   new ServerOptions({
     agent: process.argv[1],
     agentName: 'vak-sahayak',
-  }),
+    initializeProcessTimeout: 30_000, // 30s for Windows cold starts
+  })
 );
