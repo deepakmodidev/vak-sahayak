@@ -1,6 +1,14 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
-import { type JobContext, type JobProcess, ServerOptions, cli, defineAgent, llm as llmHelper, voice } from '@livekit/agents';
+import {
+  type JobContext,
+  type JobProcess,
+  ServerOptions,
+  cli,
+  defineAgent,
+  llm as llmHelper,
+  voice,
+} from '@livekit/agents';
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
@@ -11,11 +19,11 @@ config({ path: '.env.local' });
 const encoder = new TextEncoder();
 
 export default defineAgent({
-  prewarm: async (proc: JobProcess) => { 
-    proc.userData.vad = await silero.VAD.load({ 
-      activationThreshold: 0.7, 
-      minSpeechDuration: 0.25 
-    }); 
+  prewarm: async (proc: JobProcess) => {
+    proc.userData.vad = await silero.VAD.load({
+      activationThreshold: 0.7,
+      minSpeechDuration: 0.25,
+    });
   },
 
   entry: async (ctx: JobContext) => {
@@ -36,15 +44,17 @@ export default defineAgent({
     }
 
     const currentSchema = FORM_SCHEMAS[serviceType];
-    const fieldIds = currentSchema.fields.map((f) => f.id) as [string, ...string[]];
+    const fieldIdsRaw = currentSchema.fields.map((f) => f.id);
+    if (fieldIdsRaw.length === 0) throw new Error(`Schema "${serviceType}" has no fields`);
+    const fieldIds = fieldIdsRaw as [string, ...string[]];
 
     /**
      * Internal helper to publish JSON data to the frontend participant.
      */
     const publishUpdate = async (type: string, payload: any) => {
       const participant = ctx.room.localParticipant;
-      if (!participant) return 'Error: Assistant disconnected.';
-      
+      if (!participant) throw new Error('Assistant disconnected');
+
       const message = JSON.stringify({ type, payload });
       await participant.publishData(encoder.encode(message), { reliable: true });
     };
@@ -52,48 +62,58 @@ export default defineAgent({
     // --- 2. LLM TOOL DEFINITIONS ---
     const updateFormField = llmHelper.tool({
       description: 'Update a specific field in the government form.',
-      parameters: z.object({ 
-        field: z.enum(fieldIds), 
-        value: z.string() 
+      parameters: z.object({
+        field: z.enum(fieldIds),
+        value: z.string(),
       }),
       execute: async ({ field, value }) => {
         console.log(`📝 Update: ${field} = ${value}`);
-        await publishUpdate('form_update', { [field]: value });
-        return `Successfully updated ${field} to ${value}.`;
+        try {
+          await publishUpdate('form_update', { [field]: value });
+          return `Successfully updated ${field} to ${value}.`;
+        } catch (e) {
+          console.warn(`⚠️ publishUpdate failed: ${e}`);
+          return `Updated ${field} locally (sync failed).`;
+        }
       },
     });
 
     const focusField = llmHelper.tool({
       description: 'Signal that you are about to ask for a specific field. Call BEFORE asking.',
-      parameters: z.object({ 
-        field: z.enum(fieldIds) 
+      parameters: z.object({
+        field: z.enum(fieldIds),
       }),
       execute: async ({ field }) => {
         console.log(`🎯 Focus: ${field}`);
-        await publishUpdate('form_focus', { fieldId: field });
-        return `UI focused on ${field}.`;
+        try {
+          await publishUpdate('form_focus', { fieldId: field });
+          return `UI focused on ${field}.`;
+        } catch (e) {
+          console.warn(`⚠️ publishUpdate failed: ${e}`);
+          return `Focus shifted to ${field} locally.`;
+        }
       },
     });
 
     let formSubmitted = false;
     const submitForm = llmHelper.tool({
-      description: 'Submit the final government form once all confirmed.',
-      parameters: z.object({ 
-        confirmation: z.string() 
+      description: 'Submit the final government form. Only call this AFTER the user has explicitly confirmed the summary.',
+      parameters: z.object({
+        userHasConfirmed: z.boolean().describe('Must be explicitly true if the user confirmed the summary.'),
       }),
-      execute: async ({ confirmation }) => {
+      execute: async ({ userHasConfirmed }) => {
+        if (!userHasConfirmed) return 'You must ask the user to confirm first.';
         if (formSubmitted) return 'Error: Form already submitted.';
-        
-        const ok = ['yes', 'true', 'confirm', 'karo', 'ha', 'submit'].some(w => 
-          confirmation.toLowerCase().includes(w)
-        );
 
-        if (!ok) return 'Submission cancelled. Please wait for user confirmation.';
-        
         formSubmitted = true;
-        await publishUpdate('form_submitted', { status: 'success' });
-        console.log(`✅ Form submitted successfully.`);
-        return 'The form has been submitted and processed.';
+        try {
+          await publishUpdate('form_submitted', { status: 'success' });
+          console.log(`✅ Form submitted successfully.`);
+          return 'The form has been submitted and processed.';
+        } catch (e) {
+          console.warn(`⚠️ publishUpdate failed: ${e}`);
+          return 'Form was processed but sync failed.';
+        }
       },
     });
 
@@ -104,23 +124,20 @@ export default defineAgent({
       baseURL: 'https://api.groq.com/openai/v1',
     });
 
-    const stt = new sarvam.STT({ 
-      model: 'saaras:v3', 
+    const stt = new sarvam.STT({
+      model: 'saaras:v3',
       languageCode: 'unknown', // Detects any language automatically
-      flushSignal: true 
+      flushSignal: true,
     });
 
-    const tts = new sarvam.TTS({ 
-      model: 'bulbul:v3', 
-      speaker: 'shubh', 
-      targetLanguageCode: 'en-IN' // Initial greeting language
+    const tts = new sarvam.TTS({
+      model: 'bulbul:v3',
+      speaker: 'shubh',
+      targetLanguageCode: 'en-IN', // Initial greeting language
     });
 
     // --- 4. AGENT DEFINITION ---
     const agent = new voice.Agent({
-      llm,
-      stt,
-      tts,
       instructions: `
         # IDENTITY & PURPOSE
         You are "Vak Sahayak", a highly professional and empathetic AI assistant for Government of India forms. 
@@ -154,19 +171,21 @@ export default defineAgent({
         - If you do not have the information for a field, you MUST ASK the user for it.
         - Only call 'update_form_field' when you have real, specific data from the user.
       `,
-      tools: { 
-        update_form_field: updateFormField, 
-        focus_field: focusField, 
-        submit_form: submitForm 
+      tools: {
+        update_form_field: updateFormField,
+        focus_field: focusField,
+        submit_form: submitForm,
       },
     });
 
     const session = new voice.AgentSession({
-      stt, llm, tts, 
-      vad: ctx.proc.userData.vad as silero.VAD,
-      turnHandling: { 
-        turnDetection: 'vad', 
-        endpointing: { minDelay: 0.8 } 
+      stt,
+      llm,
+      tts,
+      vad: ((ctx as any).proc || (ctx as any).jobProcess)?.userData?.vad as silero.VAD,
+      turnHandling: {
+        turnDetection: 'vad',
+        endpointing: { minDelay: 0.8 },
       },
     });
 
@@ -175,23 +194,23 @@ export default defineAgent({
       console.log(`🛑 Job ${ctx.job.id} is shutting down...`);
     });
 
-    await session.start({ agent, room: ctx.room });
+    await session.start({ room: ctx.room, agent });
 
     // --- 5. GREETING & EVENTS ---
     let greeted = false;
 
-    const triggerGreeting = () => {
+    const triggerGreeting = async () => {
       if (greeted) return;
       greeted = true;
       console.log(`👋 Greeting user for: ${currentSchema.title}`);
-      session.generateReply({ 
-        instructions: `Welcome the user warmly, introduce yourself as 'Vak Sahayak', and explain that you are here to assist with the ${currentSchema.title} form. Ask if they are ready to start.` 
+      await session.generateReply({
+        instructions: `Welcome the user warmly, introduce yourself as 'Vak Sahayak', and explain that you are newly active to assist with the ${currentSchema.title} form. Ask if they are ready to start.`,
       });
     };
 
     // Greet immediately if participants exist, otherwise wait for join
-    if (ctx.room.remoteParticipants.size > 0) triggerGreeting();
-    ctx.room.on('participantConnected', triggerGreeting);
+    if ([...ctx.room.remoteParticipants.values()].length > 0) triggerGreeting();
+    ctx.room.on('participantConnected', () => triggerGreeting());
 
     // Error & Telemetry Management
     tts.on('error', (e) => {
@@ -201,21 +220,37 @@ export default defineAgent({
         console.warn('⚠️ TTS Warning:', e);
       }
     });
-    
+
     llm.on('error', (e) => console.warn('⚠️ LLM Warning:', e));
-    
+
     // Dynamic Language Switching Logic
-    const SUPPORTED_TTS_LANGUAGES = ['bn-IN', 'en-IN', 'gu-IN', 'hi-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN'];
-    
+    const SUPPORTED_TTS_LANGUAGES = [
+      'bn-IN',
+      'en-IN',
+      'gu-IN',
+      'hi-IN',
+      'kn-IN',
+      'ml-IN',
+      'mr-IN',
+      'od-IN',
+      'pa-IN',
+      'ta-IN',
+      'te-IN',
+    ];
+
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
       if (ev.isFinal) {
         console.log(`👤 User: ${ev.transcript}`);
-        
+
         // Update TTS language if a new regional language is detected
         const detected = ev.language;
         if (detected && detected !== 'unknown' && SUPPORTED_TTS_LANGUAGES.includes(detected)) {
           console.log(`🌐 Switching agent voice to: ${detected}`);
-          tts.updateOptions({ targetLanguageCode: detected });
+          if (typeof (tts as any).updateOptions === 'function') {
+            (tts as any).updateOptions({ targetLanguageCode: detected });
+          } else {
+            console.warn('⚠️ tts.updateOptions not supported on this plugin version');
+          }
         }
       }
     });
@@ -242,8 +277,10 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // Start the CLI Runner
-cli.runApp(new ServerOptions({
-  agent: process.argv[1],
-  agentName: 'vak-sahayak',
-  initializeProcessTimeout: 30_000,
-}));
+cli.runApp(
+  new ServerOptions({
+    agent: process.argv[1],
+    agentName: 'vak-sahayak',
+    initializeProcessTimeout: 30_000,
+  })
+);
