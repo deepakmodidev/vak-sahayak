@@ -1,0 +1,6 @@
+{
+  "inputs": ["Namaste! Main Vak Sahayak hoon."],
+  "target_language_code": "en-IN",
+  "speaker": "shubh",
+  "model": "bulbul:v3"
+}

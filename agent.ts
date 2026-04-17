@@ -5,109 +5,163 @@ import {
   cli,
   defineAgent,
   voice,
+  llm as llmHelper, // Rename the helper here to keep your 'llm' variable clean
 } from '@livekit/agents';
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
-import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
 
-// Load environment variables from .env.local
+// Load environment variables from .env.local exactly
 config({ path: '.env.local' });
+import { z } from 'zod';
 
-// ---------------------------------------------------------------------------
-// 🎙️ Interview GPT - AI Mock Interviewer
-// ---------------------------------------------------------------------------
+/**
+ * 🏛️ Vak Sahayak - AI Government Form Assistant
+ * Structure adapted from Interview-GPT for maximum stability.
+ */
 
 export default defineAgent({
-  // Prewarm: Load heavyweight resources like VAD before the job starts
   prewarm: async (proc: JobProcess) => {
     proc.userData.vad = await silero.VAD.load();
   },
 
   entry: async (ctx: JobContext) => {
-    console.log('--- 🚀 New Job Received (Dispatch Successful)! ---');
-    console.log('--- Agent joining room:', ctx.room.name, '---');
+    const roomName = ctx.job.room?.name || "unknown";
+    console.log(`--- 🚀 New Job Received (ID: ${ctx.job.id}) ---`);
+    console.log(`--- Connecting to room: ${roomName} ---`);
+    
+    await ctx.connect();
+    console.log(`--- ✅ Connected to room: ${ctx.room.name} ---`);
 
-    // 1. LLM (Brain): Groq (via OpenAI plugin)
+    // 1. Fetch Service Context from Job Metadata (Official Pattern)
+    let serviceType = 'general';
+    try {
+      const jobMeta = JSON.parse(ctx.job.metadata || '{}');
+      serviceType = jobMeta.serviceType || 'general';
+      console.log(`--- 🛠️ Service Mode: ${serviceType.toUpperCase()} ---`);
+    } catch {
+      console.warn('--- ⚠️ No job metadata found, using general mode ---');
+    }
+
+    // 2. Defining Tools (using the renamed helper to avoid naming conflicts)
+    const updateFormField = llmHelper.tool({
+      description: 'Update a specific field in the government form.',
+      parameters: z.object({
+        field: z.enum(['full_name', 'age', 'address', 'id_number', 'service_type']).describe('The field to update'),
+        value: z.string().describe('The information provided by the user'),
+      }),
+      execute: async ({ field, value }: { field: string; value: string }) => {
+        console.log(`--- 📝 [${serviceType}] Form Update: ${field} = ${value} ---`);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify({ 
+          type: 'form_update', 
+          payload: { [field]: value } 
+        }));
+        await ctx.room.localParticipant?.publishData(data, { reliable: true });
+        return `Successfully updated ${field} to ${value}.`;
+      },
+    });
+
+    const submitForm = llmHelper.tool({
+      description: 'Submit the final government form after all details are collected.',
+      parameters: z.object({
+        confirmation: z.boolean().describe('Whether the user confirmed the submission'),
+      }),
+      execute: async ({ confirmation }: { confirmation: boolean }) => {
+        if (!confirmation) return "Submission cancelled. Please confirm with the user first.";
+        console.log(`--- ✅ [${serviceType}] Form Submitted Successfully ---`);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify({ type: 'form_submitted', payload: { status: 'success' } }));
+        await ctx.room.localParticipant?.publishData(data, { reliable: true });
+        return "The form has been submitted successfully to the portal.";
+      },
+    });
+
+    // 3. LLM: Groq (Exactly your pattern)
     const llm = new openai.LLM({
       model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       baseURL: 'https://api.groq.com/openai/v1',
       apiKey: process.env.GROQ_API_KEY,
     });
 
-    // 2. STT (Ears): Sarvam AI for Hindi/English auto-detection
+    // 4. STT: Sarvam Saaras v3
     const stt = new sarvam.STT({
       model: 'saaras:v3',
       languageCode: 'en-IN',
-      flushSignal: true, // Behatar turn-taking ke liye
+      flushSignal: true,
     });
 
-    // 3. TTS (Mouth): Sarvam AI (Speaker: Shubh)
+    // 5. TTS: Sarvam Bulbul v3 (Speaker: Shubh)
     const tts = new sarvam.TTS({
       model: 'bulbul:v3',
       speaker: 'shubh',
       targetLanguageCode: 'en-IN',
     });
 
-    // 4. Connect to the room (First, so we can see metadata)
-    await ctx.connect();
-    console.log('Connected to room', ctx.room.name);
-
-    // 5. Fetch Resume Context from Job Metadata (Official LiveKit Pattern)
-    let resumeText = '';
-    try {
-      const jobMeta = JSON.parse(ctx.job.metadata || '{}');
-      resumeText = jobMeta.resume || '';
-      if (resumeText) {
-        console.log(`--- 📄 Resume loaded from job metadata (${resumeText.length} chars) ---`);
-      }
-    } catch {
-      console.warn('--- ⚠️ No job metadata found ---');
-    }
-
-    // 6. Agent Persona: Interview GPT (Personalized)
+    // 6. Agent Instructions (Re-populated for Vak Sahayak with Dynamic Service)
     const agent = new voice.Agent({
-      instructions: `You are 'Interview GPT', a professional technical interviewer. 
-      Your interview should follow this natural flow:
+      instructions: `You are 'Vak Sahayak', a dedicated and patient AI assistant for Indian citizens.
       
-      1. Start with a professional greeting and 1-2 light warm-up questions (e.g., 'How are you?' or 'Can you tell me about your background?') to build rapport.
-      2. Once the user is ready, transition into a technical deep-dive by asking exactly 4-5 targeted questions based on their resume. Ask exactly ONE question at a time and wait for a response.
-      3. After the technical discussion is complete, provide a concise but constructive summary of the user's performance, highlighting their strengths and 1-2 specific areas for improvement.
-      4. Finally, thank the user for their time and close the session gracefully.
+      CURRENT SERVICE MODE: ${serviceType.toUpperCase()}
+      
+      Your goal is to help users fill out the ${serviceType.toUpperCase()} form purely through voice.
+      
+      PERSONALITY:
+      - Respected, professional, and helpful.
+      - Use Hinglish (mix of Hindi and English).
+      
+      FLOW:
+      1. Greet warmly. Since the user already selected ${serviceType.toUpperCase()} in the UI, start by acknowledging it (e.g., "Namaste! Main ${serviceType.toUpperCase()} form bharne mein aapki madad karunga.")
+      2. Collect details one by one: Name, Age, Address, ID.
+      3. Call 'update_form_field' immediately for every new piece of info.
+      4. Once complete, summarize and ask for confirmation to submit.
+      5. Call 'submit_form' when confirmed.
       
       CORE RULES:
-      - Always ask exactly one question (one-liner) at a time.
-      - Maintain a professional, encouraging, and high technical standard throughout.
-      - Keep your responses concise and conversational to ensure a natural flow.
-      
-      ### USER RESUME CONTEXT:
-      ${resumeText}`,
+      - Ask exactly ONE question at a time.
+      - If the service is 'aadhaar', focus on address/name updates.
+      - If the service is 'pan', focus on tax identity details.
+      - If the service is 'ration', focus on family member details.`,
+      tools: { update_form_field: updateFormField, submit_form: submitForm },
     });
 
-    // 5. Session: Orchestrates the interaction loop (Optimized for Fast Response)
+    // 6. Session Orchestration (Exactly your pattern)
     const session = new voice.AgentSession({
       stt,
       llm,
       tts,
-      vad: ctx.proc.userData.vad as silero.VAD, // Local VAD mapping
+      vad: ctx.proc.userData.vad as silero.VAD,
       turnHandling: {
-        turnDetection: 'vad', // Use local VAD for near-instant response
+        turnDetection: 'vad',
         endpointing: {
-          minDelay: 0.5, // 500ms silence before bot starts thinking
+          minDelay: 0.5,
         },
       },
     });
 
-    // 6. Start the session
+    // 7. Start Session
     await session.start({ agent, room: ctx.room });
     
-    // Initial greeting triggered immediately
-    session.generateReply({
-      instructions: "Start by saying exactly: 'Hello, I am Interview GPT and I will conduct a mock interview based on your resume.' After that, ask a friendly warm-up question to build rapport.",
-    });
+    // 8. Greeting Orchestration (Exactly your pattern)
+    const greet = async () => {
+      console.log('--- 👋 Triggering Greeting... ---');
+      session.generateReply({
+        instructions: "Greet the user warmly in Hinglish with 'Namaste! Main Vak Sahayak hoon. Main aapki kaise madad kar sakta hoon?'",
+      });
+    };
 
-    // --- Events & Feedback ---
+    // If a human is already here, greet immediately. Otherwise, wait for someone.
+    const humanParticipants = ctx.room.remoteParticipants.values();
+    if (Array.from(humanParticipants).length > 0) {
+      greet();
+    } else {
+      ctx.room.on('participantConnected', () => {
+        console.log('--- 👤 Participant connected, greeting... ---');
+        greet();
+      });
+    }
+
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
       if (ev.isFinal) console.log('👤 User:', ev.transcript);
     });
@@ -118,13 +172,10 @@ export default defineAgent({
   },
 });
 
-// ---------------------------------------------------------------------------
-// 🚀 CLI Runner (Fully Aligned with Official Docs)
-// ---------------------------------------------------------------------------
-
+// 🚀 CLI Runner (Fully Aligned)
 cli.runApp(
   new ServerOptions({
-    agent: fileURLToPath(import.meta.url),
-    agentName: 'interview-gpt',
+    agent: process.argv[1],
+    agentName: 'vak-sahayak',
   }),
 );

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     if (!API_SECRET) throw new Error('LIVEKIT_API_SECRET is not defined');
 
     const body = await req.json();
-    const resumeText = body?.resume || '';
+    const serviceType = body?.serviceType || 'general';
 
     const roomConfig = body?.room_config
       ? RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true })
@@ -45,12 +45,14 @@ export async function POST(req: Request) {
     );
 
     // Official Pattern: Explicit Agent Dispatch with Job Metadata
-    // Resume is sent as job metadata, accessible via ctx.job.metadata in the agent
     const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
-    await agentDispatchClient.createDispatch(roomName, 'interview-gpt', {
-      metadata: JSON.stringify({ resume: resumeText }),
+    await agentDispatchClient.createDispatch(roomName, 'vak-sahayak', {
+      metadata: JSON.stringify({ 
+        branding: 'Vak Sahayak',
+        serviceType: serviceType
+      }),
     });
-    console.log(`--- ✅ Agent dispatched to ${roomName} with ${resumeText.length} chars of resume ---`);
+    console.log(`--- ✅ Agent dispatched to ${roomName} (Service: ${serviceType}) ---`);
 
     const data: ConnectionDetails = {
       serverUrl: LIVEKIT_URL,

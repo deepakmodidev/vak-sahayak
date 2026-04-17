@@ -33,9 +33,9 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Interview GPT',
-  pageTitle: 'Interview GPT - AI Mock Interviewer',
-  pageDescription: 'Practice and master your interviews with our AI-powered Interviewer.',
+  companyName: 'Vak Sahayak',
+  pageTitle: 'Vak Sahayak - Voice-First Indian Government Form Filling',
+  pageDescription: 'Fill any Indian government form just by speaking in your own language.',
 
   supportsChatInput: true,
   supportsVideoInput: true,
@@ -43,9 +43,9 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   isPreConnectBufferEnabled: true,
 
   logo: '/lk-logo.svg',
-  accent: '#002cf2',
+  accent: '#ff9933', // Saffron
   logoDark: '/lk-logo-dark.svg',
-  accentDark: '#1fd5f9',
+  accentDark: '#138808', // Green
   startButtonText: 'Start Call',
 
   // optional: audio visualization configuration
@@ -65,7 +65,7 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   // audioVisualizerType: 'aura',
 
   // agent dispatch configuration
-  agentName: process.env.NEXT_PUBLIC_AGENT_NAME || process.env.AGENT_NAME || 'interview-gpt',
+  agentName: process.env.NEXT_PUBLIC_AGENT_NAME || process.env.AGENT_NAME || 'vak-sahayak',
 
   // LiveKit Cloud Sandbox configuration
   sandboxId: undefined,
