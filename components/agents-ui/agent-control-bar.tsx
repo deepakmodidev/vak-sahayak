@@ -21,24 +21,17 @@ import {
 import { cn } from '@/lib/shadcn/utils';
 
 const LK_TOGGLE_VARIANT_1 = [
-  'data-[state=off]:bg-accent data-[state=off]:hover:bg-foreground/10',
-  'data-[state=off]:[&_~_button]:bg-accent data-[state=off]:[&_~_button]:hover:bg-foreground/10',
-  'data-[state=off]:border-border data-[state=off]:hover:border-foreground/12',
-  'data-[state=off]:[&_~_button]:border-border data-[state=off]:[&_~_button]:hover:border-foreground/12',
-  'data-[state=off]:text-destructive data-[state=off]:hover:text-destructive data-[state=off]:focus:text-destructive',
-  'data-[state=off]:focus-visible:ring-foreground/12 data-[state=off]:focus-visible:border-ring',
-  'dark:data-[state=off]:[&_~_button]:bg-accent dark:data-[state=off]:[&_~_button]:hover:bg-foreground/10',
+  'data-[state=off]:bg-primary data-[state=off]:text-primary-foreground',
+  'data-[state=off]:border-primary',
+  'data-[state=on]:bg-muted data-[state=on]:text-foreground',
+  'data-[state=on]:border-primary',
 ];
 
 const LK_TOGGLE_VARIANT_2 = [
-  'data-[state=off]:bg-accent data-[state=off]:hover:bg-foreground/10',
-  'data-[state=off]:border-border data-[state=off]:hover:border-foreground/12',
-  'data-[state=off]:focus-visible:border-ring data-[state=off]:focus-visible:ring-foreground/12',
-  'data-[state=off]:text-foreground data-[state=off]:hover:text-foreground data-[state=off]:focus:text-foreground',
-  'data-[state=on]:bg-blue-500/20 data-[state=on]:hover:bg-blue-500/30',
-  'data-[state=on]:border-blue-700/10 data-[state=on]:text-blue-700 data-[state=on]:ring-blue-700/30',
-  'data-[state=on]:focus-visible:border-blue-700/50',
-  'dark:data-[state=on]:bg-blue-500/20 dark:data-[state=on]:text-blue-300',
+  'data-[state=off]:bg-muted data-[state=off]:text-foreground',
+  'data-[state=off]:border-primary',
+  'data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
+  'data-[state=on]:border-primary',
 ];
 
 const MOTION_PROPS: MotionProps = {
@@ -401,7 +394,7 @@ export function AgentControlBar({
             disabled={!isConnected}
             className={cn(
               variant === 'livekit' &&
-                'bg-destructive/10 dark:bg-destructive/10 text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/20 focus:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/4 rounded-full font-mono text-xs font-bold tracking-wider'
+                'bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-mono text-xs font-bold tracking-wider border border-primary'
             )}
           >
             <span className="hidden md:inline">END CALL</span>

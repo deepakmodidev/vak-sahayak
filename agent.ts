@@ -15,6 +15,7 @@ import { config } from 'dotenv';
 // Load environment variables from .env.local exactly
 config({ path: '.env.local' });
 import { z } from 'zod';
+import { FORM_SCHEMAS, DEFAULT_SERVICE } from './lib/form-schemas';
 
 /**
  * 🏛️ Vak Sahayak - AI Government Form Assistant
@@ -34,21 +35,35 @@ export default defineAgent({
     await ctx.connect();
     console.log(`--- ✅ Connected to room: ${ctx.room.name} ---`);
 
-    // 1. Fetch Service Context from Job Metadata (Official Pattern)
-    let serviceType = 'general';
-    try {
-      const jobMeta = JSON.parse(ctx.job.metadata || '{}');
-      serviceType = jobMeta.serviceType || 'general';
-      console.log(`--- 🛠️ Service Mode: ${serviceType.toUpperCase()} ---`);
-    } catch {
-      console.warn('--- ⚠️ No job metadata found, using general mode ---');
+    // 1. Fetch Service Context Strictly (Fail Fast)
+    console.log(`--- [DEBUG] Raw Job Metadata: ${ctx.job.metadata} ---`);
+    
+    if (!ctx.job.metadata) {
+      throw new Error("❌ FAILED FAST: Job metadata is completely empty. Cannot determine service type.");
     }
+
+    const jobMeta = JSON.parse(ctx.job.metadata);
+    const serviceType = jobMeta.serviceType;
+
+    if (!serviceType) {
+      throw new Error("❌ FAILED FAST: 'serviceType' is missing from Job Metadata.");
+    }
+
+    if (!FORM_SCHEMAS[serviceType]) {
+      throw new Error(`❌ FAILED FAST: Unknown service type requested: '${serviceType}'.`);
+    }
+
+    console.log(`--- ✅ [${ctx.job.id}] Service Type Detected: ${serviceType} ---`);
+    console.log(`--- 🛠️ Service Mode: ${serviceType.toUpperCase()} ---`);
+
+    const currentSchema = FORM_SCHEMAS[serviceType];
+    const fieldIds = currentSchema.fields.map(f => f.id) as [string, ...string[]];
 
     // 2. Defining Tools (using the renamed helper to avoid naming conflicts)
     const updateFormField = llmHelper.tool({
       description: 'Update a specific field in the government form.',
       parameters: z.object({
-        field: z.enum(['full_name', 'age', 'address', 'id_number', 'service_type']).describe('The field to update'),
+        field: z.enum(fieldIds).describe('The field to update'),
         value: z.string().describe('The information provided by the user'),
       }),
       execute: async ({ field, value }: { field: string; value: string }) => {
@@ -63,13 +78,31 @@ export default defineAgent({
       },
     });
 
+    const focusField = llmHelper.tool({
+      description: 'Signal that you are about to ask the user for a specific field. Call this BEFORE asking.',
+      parameters: z.object({
+        field: z.enum(fieldIds).describe('The field you are about to focus on'),
+      }),
+      execute: async ({ field }: { field: string }) => {
+        console.log(`--- 🎯 [${serviceType}] Focus: ${field} ---`);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify({ 
+          type: 'form_focus', 
+          payload: { fieldId: field } 
+        }));
+        await ctx.room.localParticipant?.publishData(data, { reliable: true });
+        return `UI focused on ${field}. You can now ask the question.`;
+      },
+    });
+
     const submitForm = llmHelper.tool({
       description: 'Submit the final government form after all details are collected.',
       parameters: z.object({
-        confirmation: z.boolean().describe('Whether the user confirmed the submission'),
+        confirmation: z.union([z.boolean(), z.string()]).describe('Whether the user confirmed the submission (accepts true/false or "true"/"false")'),
       }),
-      execute: async ({ confirmation }: { confirmation: boolean }) => {
-        if (!confirmation) return "Submission cancelled. Please confirm with the user first.";
+      execute: async ({ confirmation }: { confirmation: boolean | string }) => {
+        const isConfirmed = confirmation === true || confirmation === 'true';
+        if (!isConfirmed) return "Submission cancelled. Please confirm with the user first.";
         console.log(`--- ✅ [${serviceType}] Form Submitted Successfully ---`);
         const encoder = new TextEncoder();
         const data = encoder.encode(JSON.stringify({ type: 'form_submitted', payload: { status: 'success' } }));
@@ -101,32 +134,34 @@ export default defineAgent({
 
     // 6. Agent Instructions (Re-populated for Vak Sahayak with Dynamic Service)
     const agent = new voice.Agent({
-      instructions: `You are 'Vak Sahayak', a dedicated and patient AI assistant for Indian citizens.
+      instructions: `You are 'Vak Sahayak', a dedicated and patient AI assistant for Indian citizens helping with government forms.
       
-      CURRENT SERVICE MODE: ${serviceType.toUpperCase()}
+      CURRENT SERVICE: ${currentSchema.title}
+      DESCRIPTION: ${currentSchema.description}
       
-      Your goal is to help users fill out the ${serviceType.toUpperCase()} form purely through voice.
+      CORE INSTRUCTIONS:
+      ${currentSchema.instructions}
       
+      RELEVANT FIELDS TO COLLECT:
+      ${currentSchema.fields.map(f => `- ${f.label} (${f.id})`).join('\n')}
+
       PERSONALITY:
       - Respected, professional, and helpful.
       - Use Hinglish (mix of Hindi and English).
       
-      FLOW:
-      1. Greet warmly. Since the user already selected ${serviceType.toUpperCase()} in the UI, start by acknowledging it (e.g., "Namaste! Main ${serviceType.toUpperCase()} form bharne mein aapki madad karunga.")
-      2. Collect details one by one: Name, Age, Address, ID.
-      3. Call 'update_form_field' immediately for every new piece of info.
-      4. Once complete, summarize and ask for confirmation to submit.
-      5. Call 'submit_form' when confirmed.
-      
       CORE RULES:
-      - Ask exactly ONE question at a time.
-      - If the service is 'aadhaar', focus on address/name updates.
-      - If the service is 'pan', focus on tax identity details.
-      - If the service is 'ration', focus on family member details.`,
-      tools: { update_form_field: updateFormField, submit_form: submitForm },
+      1. FOCUS BEFORE ASKING: You MUST call 'focus_field' for a specific field BEFORE you ask the user about it. This allows the UI to scroll and show the field in advance.
+      2. STRICT SEQUENTIAL ORDER: You MUST collect information in the exact order listed below. Do NOT skip any field.
+      3. NO ASSUMPTIONS: If a field is empty, you MUST ask for it. Even if information was partially provided, verify and fill every individual field ID.
+      4. ONE AT A TIME: Ask exactly ONE question at a time.
+      5. FILL IMMEDIATELY: As soon as the user provides an answer, call 'update_form_field'.
+      6. MANDATORY CONFIRMATION: Once ALL fields are filled, you MUST explicitly ask the user for permission to submit the form (e.g. "Saari jaankari mil gayi hai, kya main form submit kar doon?"). You may ONLY call 'submit_form' AFTER the user explicitly says YES or GIVES PERMISSION to submit.
+      
+      CRITICAL: Always check the current form state. If 'RELATION (F/H)' (relation_type) is empty, you must NOT move on to 'FATHER/SPOUSE' until it is filled.`,
+      tools: { update_form_field: updateFormField, focus_field: focusField, submit_form: submitForm },
     });
 
-    // 6. Session Orchestration (Exactly your pattern)
+    // 6. Session Orchestration (Hardened for stability)
     const session = new voice.AgentSession({
       stt,
       llm,
@@ -135,7 +170,7 @@ export default defineAgent({
       turnHandling: {
         turnDetection: 'vad',
         endpointing: {
-          minDelay: 0.5,
+          minDelay: 0.8, // Increased from 0.5s to 0.8s to prevent aggressive interruptions
         },
       },
     });
@@ -145,9 +180,9 @@ export default defineAgent({
     
     // 8. Greeting Orchestration (Exactly your pattern)
     const greet = async () => {
-      console.log('--- 👋 Triggering Greeting... ---');
+      console.log(`--- 👋 Triggering Greeting for ${currentSchema.title}... ---`);
       session.generateReply({
-        instructions: "Greet the user warmly in Hinglish with 'Namaste! Main Vak Sahayak hoon. Main aapki kaise madad kar sakta hoon?'",
+        instructions: `Greet the user warmly in Hinglish with 'Namaste! Main Vak Sahayak hoon. Main aaj aapki ${currentSchema.title} application bharne mein madad karunga. Shuru karein?'`,
       });
     };
 

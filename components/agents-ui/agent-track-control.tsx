@@ -24,9 +24,10 @@ const selectVariants = cva(
   [
     'rounded-l-none shadow-none pl-2 ',
     'text-foreground hover:text-muted-foreground',
-    'peer-data-[state=on]/track:bg-muted peer-data-[state=on]/track:hover:bg-foreground/10',
-    'peer-data-[state=off]/track:text-destructive',
-    'peer-data-[state=off]/track:focus-visible:border-destructive peer-data-[state=off]/track:focus-visible:ring-destructive/30',
+    'peer-data-[state=on]/track:bg-muted',
+    'peer-data-[state=off]/track:bg-primary',
+    'peer-data-[state=off]/track:text-primary-foreground',
+    'peer-data-[state=off]/track:focus-visible:border-primary peer-data-[state=off]/track:focus-visible:ring-primary',
     '[&_svg]:opacity-100',
   ],
   {
@@ -34,24 +35,24 @@ const selectVariants = cva(
       variant: {
         default: [
           'border-none',
-          'peer-data-[state=off]/track:bg-destructive/10',
-          'peer-data-[state=off]/track:hover:bg-destructive/15',
-          'peer-data-[state=off]/track:[&_svg]:text-destructive!',
+          'peer-data-[state=off]/track:bg-primary',
+          'peer-data-[state=off]/track:hover:bg-primary',
+          'peer-data-[state=off]/track:[&_svg]:text-primary-foreground!',
 
           'dark:peer-data-[state=on]/track:bg-accent',
           'dark:peer-data-[state=on]/track:hover:bg-foreground/10',
-          'dark:peer-data-[state=off]/track:bg-destructive/10',
+          'dark:peer-data-[state=off]/track:bg-primary',
           'dark:peer-data-[state=off]/track:hover:bg-destructive/15',
         ],
         outline: [
           'border border-l-0',
           'peer-data-[state=off]/track:border-destructive/20',
-          'peer-data-[state=off]/track:bg-destructive/10',
-          'peer-data-[state=off]/track:hover:bg-destructive/15',
-          'peer-data-[state=off]/track:[&_svg]:text-destructive!',
+          'peer-data-[state=off]/track:bg-primary',
+          'peer-data-[state=off]/track:hover:bg-primary',
+          'peer-data-[state=off]/track:[&_svg]:text-primary-foreground!',
           'peer-data-[state=on]/track:hover:border-foreground/12',
 
-          'dark:peer-data-[state=off]/track:bg-destructive/10',
+          'dark:peer-data-[state=off]/track:bg-primary',
           'dark:peer-data-[state=off]/track:hover:bg-destructive/15',
           'dark:peer-data-[state=on]/track:bg-accent',
           'dark:peer-data-[state=on]/track:hover:bg-foreground/10',
@@ -296,7 +297,7 @@ export function AgentTrackControl({
             <span
               className={cn([
                 'h-full min-h-0.5 w-0.5 origin-center',
-                'group-data-[state=on]/track:bg-foreground group-data-[state=off]/track:bg-destructive',
+                'group-data-[state=on]/track:bg-foreground group-data-[state=off]/track:bg-primary-foreground',
                 'data-lk-muted:bg-muted',
               ])}
             />

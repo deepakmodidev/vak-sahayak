@@ -1,0 +1,61 @@
+import { User, Calendar, MapPin, Phone, UserCircle, CreditCard, IndianRupee, Users2, Home, Fingerprint } from 'lucide-react';
+
+export interface FormField {
+  id: string;
+  label: string;
+  icon: any; // Lucide icon component
+}
+
+export interface FormSchema {
+  title: string;
+  description: string;
+  fields: FormField[];
+  instructions: string;
+}
+
+export const FORM_SCHEMAS: Record<string, FormSchema> = {
+  aadhaar: {
+    title: 'Aadhaar Card Update',
+    description: 'Update your official Aadhaar identity details.',
+    fields: [
+      { id: 'full_name', label: 'Full Name', icon: User },
+      { id: 'relation_type', label: 'Relation (F/H)', icon: Users2 },
+      { id: 'father_name', label: "Father/Spouse", icon: UserCircle },
+      { id: 'age', label: 'Age / DOB', icon: Calendar },
+      { id: 'gender', label: 'Gender', icon: Fingerprint },
+      { id: 'address', label: 'Current Address', icon: MapPin },
+      { id: 'mobile', label: 'Mobile Number', icon: Phone },
+    ],
+    instructions: 'Help the user update their Aadhaar. Ask for their name, relation type (Father/Husband), father/spouse name, age, gender, current address, and mobile number.',
+  },
+  pan: {
+    title: 'PAN Card Application',
+    description: 'Apply for your permanent account number for tax identity.',
+    fields: [
+      { id: 'full_name', label: 'Full Name', icon: User },
+      { id: 'father_name', label: "Father's Name", icon: UserCircle },
+      { id: 'dob', label: 'Date of Birth', icon: Calendar },
+      { id: 'gender', label: 'Gender', icon: Fingerprint },
+      { id: 'aadhaar_number', label: 'Aadhaar Number', icon: CreditCard },
+      { id: 'mobile', label: 'Mobile Number', icon: Phone },
+      { id: 'address', label: 'Comm. Address', icon: MapPin },
+    ],
+    instructions: 'Assist the user with their PAN card application. Collect their full name, father\'s name, date of birth, gender, 12-digit Aadhaar number, mobile number, and communication address.',
+  },
+  ration: {
+    title: 'Ration Card Application',
+    description: 'Apply for food security and subsidised supplies.',
+    fields: [
+      { id: 'hof_name', label: 'Head of Family', icon: User },
+      { id: 'hof_gender', label: 'HoF Gender', icon: Fingerprint },
+      { id: 'hof_aadhaar', label: 'HoF Aadhaar', icon: CreditCard },
+      { id: 'household_income', label: 'Monthly Income', icon: IndianRupee },
+      { id: 'member_count', label: 'Total Members', icon: Users2 },
+      { id: 'category', label: 'Category (BPL/APL)', icon: CreditCard },
+      { id: 'district', label: 'District / Region', icon: Home },
+    ],
+    instructions: 'Help the user with their Ration Card form. Ask for the Head of Family name, their gender, their Aadhaar number, total monthly household income, total family members, category (BPL/APL), and district.',
+  },
+};
+
+export const DEFAULT_SERVICE = 'aadhaar';

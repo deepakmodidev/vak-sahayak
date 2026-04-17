@@ -3,7 +3,6 @@
 import { useTheme } from 'next-themes';
 import { AnimatePresence, motion } from 'motion/react';
 import { useSessionContext } from '@livekit/components-react';
-import { Landmark } from 'lucide-react';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { WelcomeView } from '@/components/app/welcome-view';
@@ -29,14 +28,18 @@ const VIEW_MOTION_PROPS = {
 interface ViewControllerProps {
   appConfig: AppConfig;
   formData: FormData;
+  activeField: string | null;
   isSubmitted: boolean;
+  serviceType: string;
   onServiceSelect: (id: string) => void;
 }
 
 export function ViewController({
   appConfig,
   formData,
+  activeField,
   isSubmitted,
+  serviceType,
   onServiceSelect,
 }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
@@ -65,10 +68,27 @@ export function ViewController({
       {isConnected && (
         <motion.div 
           key="session-root"
-          className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-[#0a0a0b]"
+          className="fixed inset-0 flex flex-col items-center justify-center p-12 bg-background overflow-y-auto"
           {...VIEW_MOTION_PROPS}
         >
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Global Header */}
+          <div className="absolute top-0 left-0 w-full p-8 z-50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/vak-sahayak.png" 
+                alt="Vak Sahayak" 
+                className="w-12 h-12 object-contain" 
+              />
+              <div>
+                <h2 className="text-xl font-semibold text-foreground tracking-tight leading-none">Vak Sahayak</h2>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] mt-1.5">
+                  Voice Portal Active
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mt-12">
             {/* Left: Agent Visualization */}
             <div className="relative h-full flex items-center justify-center">
               <MotionSessionView
@@ -81,7 +101,7 @@ export function ViewController({
                 audioVisualizerColor={
                   resolvedTheme === 'dark'
                     ? appConfig.audioVisualizerColorDark
-                    : appConfig.audioVisualizerColor
+                    : ('var(--primary)' as `#${string}`)
                 }
                 audioVisualizerColorShift={appConfig.audioVisualizerColorShift}
                 audioVisualizerBarCount={appConfig.audioVisualizerBarCount}
@@ -92,30 +112,17 @@ export function ViewController({
                 audioVisualizerWaveLineWidth={appConfig.audioVisualizerWaveLineWidth}
                 className="w-full"
               />
-              
-              <div className="absolute top-0 left-0 p-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/20">
-                    <Landmark size={24} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white tracking-tight">Vak Sahayak</h2>
-                    <p className="text-xs text-white/40 font-medium uppercase tracking-widest leading-none mt-1">
-                      Voice Portal Active
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* Right: Form Visualizer */}
-            <div className="flex justify-center">
+            {/* Right: Interaction State (Tracker or Success) */}
               <FormVisualizer 
                 data={formData} 
+                activeField={activeField}
                 isSubmitted={isSubmitted} 
                 appConfig={appConfig}
+                serviceType={serviceType}
+                onReset={() => window.location.reload()}
               />
-            </div>
           </div>
         </motion.div>
       )}

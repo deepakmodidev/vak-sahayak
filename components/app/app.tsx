@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { TokenSource, RoomEvent } from 'livekit-client';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
@@ -30,8 +30,15 @@ interface AppProps {
 
 export function App({ appConfig }: AppProps) {
   const [formData, setFormData] = useState<FormData>({});
+  const [activeField, setActiveField] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [serviceType, setServiceType] = useState('aadhaar');
+  const serviceTypeRef = useRef(serviceType);
+
+  // Keep ref in sync
+  useEffect(() => {
+    serviceTypeRef.current = serviceType;
+  }, [serviceType]);
 
   const tokenSource = useMemo(() => {
     return TokenSource.custom(async () => {
@@ -40,17 +47,16 @@ export function App({ appConfig }: AppProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           room_config: {},
-          serviceType: serviceType 
+          serviceType: serviceTypeRef.current 
         }),
       });
       if (!res.ok) throw new Error('Token fetch failed');
       return res.json();
     });
-  }, [serviceType]);
+  }, []);
 
   const session = useSession(
-    tokenSource,
-    appConfig.agentName ? { agentName: appConfig.agentName } : undefined
+    tokenSource
   );
 
   // Sync Form Data from Agent via Data Packets
@@ -66,6 +72,10 @@ export function App({ appConfig }: AppProps) {
         if (data.type === 'form_update') {
           setFormData((prev) => ({ ...prev, ...data.payload }));
           toast.info(`Updated: ${Object.keys(data.payload)[0]}`);
+          // Clear focus when updated
+          setActiveField(null);
+        } else if (data.type === 'form_focus') {
+          setActiveField(data.payload.fieldId);
         } else if (data.type === 'form_submitted') {
           setIsSubmitted(true);
           toast.success('Government form submitted successfully!');
@@ -88,8 +98,16 @@ export function App({ appConfig }: AppProps) {
         <ViewController
           appConfig={appConfig}
           formData={formData}
+          activeField={activeField}
           isSubmitted={isSubmitted}
-          onServiceSelect={setServiceType}
+          serviceType={serviceType}
+          onServiceSelect={(type) => {
+            setServiceType(type);
+            serviceTypeRef.current = type; // Synchronous update for token boundary
+            setFormData({});
+            setActiveField(null);
+            setIsSubmitted(false);
+          }}
         />
       </main>
 

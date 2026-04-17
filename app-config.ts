@@ -38,15 +38,15 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   pageDescription: 'Fill any Indian government form just by speaking in your own language.',
 
   supportsChatInput: true,
-  supportsVideoInput: true,
-  supportsScreenShare: true,
+  supportsVideoInput: false, // Disabled for pure Voice Portal
+  supportsScreenShare: false, // Disabled for pure Voice Portal
   isPreConnectBufferEnabled: true,
 
   logo: '/lk-logo.svg',
-  accent: '#ff9933', // Saffron
+  accent: '#be123c',
   logoDark: '/lk-logo-dark.svg',
   accentDark: '#138808', // Green
-  startButtonText: 'Start Call',
+  startButtonText: 'Fill the Form by Voice',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',

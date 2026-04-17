@@ -185,8 +185,8 @@ export function AgentSessionView_01({
     leave: true,
     microphone: true,
     chat: supportsChatInput,
-    camera: supportsVideoInput,
-    screenShare: supportsScreenShare,
+    camera: false, // Explicitly disabled
+    screenShare: false, // Explicitly disabled
   };
 
   useEffect(() => {
@@ -257,7 +257,7 @@ export function AgentSessionView_01({
             )}
           </AnimatePresence>
         )}
-        <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
+        <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-6">
           <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
           <AgentControlBar
             variant="livekit"
