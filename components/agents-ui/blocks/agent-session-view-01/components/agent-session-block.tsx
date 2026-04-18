@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+// eslint-disable-next-line import/named
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
 import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
@@ -115,18 +116,6 @@ export interface AgentSessionView_01Props {
    */
   supportsChatInput?: boolean;
   /**
-   * Enables or disables camera controls in the bottom control bar.
-   *
-   * @default true
-   */
-  supportsVideoInput?: boolean;
-  /**
-   * Enables or disables screen sharing controls in the bottom control bar.
-   *
-   * @default true
-   */
-  supportsScreenShare?: boolean;
-  /**
    * Shows a pre-connect buffer state with a shimmer message before messages appear.
    *
    * @default true
@@ -158,8 +147,6 @@ export interface AgentSessionView_01Props {
 export function AgentSessionView_01({
   preConnectMessage = 'Agent is listening, ask it a question',
   supportsChatInput = true,
-  supportsVideoInput = true,
-  supportsScreenShare = true,
   isPreConnectBufferEnabled = true,
 
   audioVisualizerType,

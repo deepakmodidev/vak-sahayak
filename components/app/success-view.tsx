@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, CheckCircle2, FileText, Printer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_SERVICE, FORM_SCHEMAS } from '@/lib/form-schemas';

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
+// eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
 import type { AppConfig } from '@/app-config';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,6 @@ export function FormVisualizer({
   data,
   activeField,
   isSubmitted,
-  appConfig,
   serviceType = DEFAULT_SERVICE,
   onReset,
 }: FormVisualizerProps) {
@@ -42,7 +42,6 @@ export function FormVisualizer({
   // Auto-scroll the active field or most recently updated field into view
   useEffect(() => {
     const currentKeys = Object.keys(data);
-    const hasNewData = currentKeys.length > prevDataKeys.current.length;
     const changedKey = currentKeys.find(
       (key) => data[key] !== undefined && !prevDataKeys.current.includes(key)
     );

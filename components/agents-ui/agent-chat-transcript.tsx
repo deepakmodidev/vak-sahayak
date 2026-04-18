@@ -1,6 +1,7 @@
 'use client';
 
 import { type ComponentProps } from 'react';
+// eslint-disable-next-line import/named
 import { AnimatePresence } from 'motion/react';
 import { type AgentState, type ReceivedMessage } from '@livekit/components-react';
 import { AgentChatIndicator } from '@/components/agents-ui/agent-chat-indicator';

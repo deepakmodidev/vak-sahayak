@@ -1,6 +1,7 @@
 'use client';
 
 import { useTheme } from 'next-themes';
+// eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
 import { useSessionContext } from '@livekit/components-react';
 import type { AppConfig } from '@/app-config';
@@ -11,7 +12,7 @@ import { WelcomeView } from '@/components/app/welcome-view';
 const MotionWelcomeView = motion.create(WelcomeView);
 const MotionSessionView = motion.create(AgentSessionView_01);
 
-const VIEW_MOTION_PROPS: any = {
+const VIEW_MOTION_PROPS = {
   variants: {
     visible: { opacity: 1 },
     hidden: { opacity: 0 },
@@ -23,7 +24,7 @@ const VIEW_MOTION_PROPS: any = {
     duration: 0.5,
     ease: 'linear',
   },
-};
+} as const;
 
 interface ViewControllerProps {
   appConfig: AppConfig;
@@ -92,8 +93,6 @@ export function ViewController({
               <MotionSessionView
                 key="session-view"
                 supportsChatInput={appConfig.supportsChatInput}
-                supportsVideoInput={appConfig.supportsVideoInput}
-                supportsScreenShare={appConfig.supportsScreenShare}
                 isPreConnectBufferEnabled={appConfig.isPreConnectBufferEnabled}
                 audioVisualizerType={appConfig.audioVisualizerType}
                 audioVisualizerColor={
