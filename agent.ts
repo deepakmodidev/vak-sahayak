@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
 import { z } from 'zod';
 import {
@@ -27,8 +28,8 @@ export default defineAgent({
   },
 
   entry: async (ctx: JobContext) => {
-    await ctx.connect();
-    console.log(`🚀 Connected to room: ${ctx.room.name} (Job: ${ctx.job.id})`);
+    // ✅ FIX 1: ctx.connect() moved to AFTER session.start()
+    console.log(`🚀 Connecting to room: ${ctx.room.name} (Job: ${ctx.job.id})`);
 
     // --- 1. METADATA & SCHEMA INITIALIZATION ---
     let serviceType: string;
@@ -40,7 +41,7 @@ export default defineAgent({
         throw new Error(`Missing or invalid serviceType: ${serviceType}`);
       }
     } catch (e) {
-      throw new Error(`❌ Metadata validation failed: ${e}`);
+      throw new Error(`❌ Metadata validation failed: ${e instanceof Error ? e.message : e}`);
     }
 
     const currentSchema = FORM_SCHEMAS[serviceType];
@@ -48,13 +49,9 @@ export default defineAgent({
     if (fieldIdsRaw.length === 0) throw new Error(`Schema "${serviceType}" has no fields`);
     const fieldIds = fieldIdsRaw as [string, ...string[]];
 
-    /**
-     * Internal helper to publish JSON data to the frontend participant.
-     */
     const publishUpdate = async (type: string, payload: any) => {
       const participant = ctx.room.localParticipant;
       if (!participant) throw new Error('Assistant disconnected');
-
       const message = JSON.stringify({ type, payload });
       await participant.publishData(encoder.encode(message), { reliable: true });
     };
@@ -120,21 +117,33 @@ export default defineAgent({
     // --- 3. MODEL INITIALIZATION ---
     const llm = new openai.LLM({
       model: 'llama-3.3-70b-versatile',
-      // model: 'meta-llama/llama-4-scout-17b-16e-instruct',
       baseURL: 'https://api.groq.com/openai/v1',
     });
 
     const stt = new sarvam.STT({
       model: 'saaras:v3',
-      languageCode: 'unknown', // Detects any language automatically
+      languageCode: 'unknown',
       flushSignal: true,
     });
 
     const tts = new sarvam.TTS({
       model: 'bulbul:v3',
       speaker: 'shubh',
-      targetLanguageCode: 'en-IN', // Initial greeting language
+      targetLanguageCode: 'en-IN',
     });
+
+    // 🚨 HACK: Intercept Sarvam TTS 408 before it reaches AgentSession
+    const originalEmit = tts.emit.bind(tts);
+    tts.emit = (eventName: string | symbol, ...args: any[]) => {
+      if (eventName === 'error' || eventName === 'tts_error') {
+        const err = args[0];
+        if (err && err.toString().includes('408')) {
+          console.log('🔇 Hacked: Silently swallowing Sarvam 408 idle timeout');
+          return false;
+        }
+      }
+      return originalEmit(eventName as any, ...args);
+    };
 
     // --- 4. AGENT DEFINITION ---
     const agent = new voice.Agent({
@@ -162,9 +171,10 @@ export default defineAgent({
         5. SUBMISSION: Once all fields are filled, provide a detailed summary of all information collected. Ask the user to verify the details and explicitly tell them to suggest any changes if needed. Only call 'submit_form' once the user gives a clear final confirmation to proceed.
         
         # CRITICAL: TOOL INTERFACE
-        1. Use the provided tools via the API schema ONLY.
-        2. NEVER write "function=" or tools in your text response to the user.
-        3. If you write code or function calls in the chat, the user will hear them as nonsense.
+        1. Use the provided tools via the JSON function calling schema ONLY.
+        2. EXTREMELY IMPORTANT: DO NOT wrap function calls in <function=...> XML tags. 
+        3. NEVER write "function=" in your text response to the user.
+        4. If you write code or function calls in the chat, the user will hear them as nonsense.
         
         # NEVER HALLUCINATE DATA
         - DO NOT guess or use placeholders like "user_provided_value".
@@ -178,23 +188,28 @@ export default defineAgent({
       },
     });
 
+    // ✅ FIX 2: vad accessed via ctx.proc directly
+    const vad = ctx.proc.userData.vad! as silero.VAD;
+
     const session = new voice.AgentSession({
       stt,
       llm,
       tts,
-      vad: ((ctx as any).proc || (ctx as any).jobProcess)?.userData?.vad as silero.VAD,
+      vad, // ✅ FIX 3: vad passed to session, not silero-less
       turnHandling: {
-        turnDetection: 'vad',
-        endpointing: { minDelay: 0.8 },
+        turnDetection: 'vad', // ✅ FIX 4: 'stt' is invalid, use 'vad'
+        endpointing: { minDelay: 0.07 },
       },
     });
 
-    // Cleanup resources on shutdown
     ctx.addShutdownCallback(async () => {
       console.log(`🛑 Job ${ctx.job.id} is shutting down...`);
     });
 
+    // ✅ FIX 5: session.start() BEFORE ctx.connect()
     await session.start({ room: ctx.room, agent });
+    await ctx.connect();
+    console.log(`🚀 Connected to room: ${ctx.room.name}`);
 
     // --- 5. GREETING & EVENTS ---
     let greeted = false;
@@ -203,19 +218,23 @@ export default defineAgent({
       if (greeted) return;
       greeted = true;
       console.log(`👋 Greeting user for: ${currentSchema.title}`);
-      await session.generateReply({
+      // ✅ FIX 6: generateReply returns a handle, not a Promise — don't await
+      session.generateReply({
         instructions: `Welcome the user warmly, introduce yourself as 'Vak Sahayak', and explain that you are newly active to assist with the ${currentSchema.title} form. Ask if they are ready to start.`,
       });
     };
 
-    // Greet immediately if participants exist, otherwise wait for join
-    if ([...ctx.room.remoteParticipants.values()].length > 0) triggerGreeting();
-    ctx.room.on('participantConnected', () => triggerGreeting());
+    // ✅ FIX 7: .catch() on unhandled async calls
+    if ([...ctx.room.remoteParticipants.values()].length > 0) {
+      triggerGreeting().catch((e) => console.warn('⚠️ Greeting failed:', e));
+    }
+    ctx.room.on('participantConnected', () => {
+      triggerGreeting().catch((e) => console.warn('⚠️ Greeting failed:', e));
+    });
 
-    // Error & Telemetry Management
     tts.on('error', (e) => {
       if (e.toString().includes('408')) {
-        console.log('💤 Sarvam TTS: Idle Sleep (408)'); // Standard idle behavior
+        console.log('💤 Sarvam TTS: Idle Sleep (408)');
       } else {
         console.warn('⚠️ TTS Warning:', e);
       }
@@ -223,26 +242,14 @@ export default defineAgent({
 
     llm.on('error', (e) => console.warn('⚠️ LLM Warning:', e));
 
-    // Dynamic Language Switching Logic
     const SUPPORTED_TTS_LANGUAGES = [
-      'bn-IN',
-      'en-IN',
-      'gu-IN',
-      'hi-IN',
-      'kn-IN',
-      'ml-IN',
-      'mr-IN',
-      'od-IN',
-      'pa-IN',
-      'ta-IN',
-      'te-IN',
+      'bn-IN', 'en-IN', 'gu-IN', 'hi-IN', 'kn-IN',
+      'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN',
     ];
 
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
       if (ev.isFinal) {
         console.log(`👤 User: ${ev.transcript}`);
-
-        // Update TTS language if a new regional language is detected
         const detected = ev.language;
         if (detected && detected !== 'unknown' && SUPPORTED_TTS_LANGUAGES.includes(detected)) {
           console.log(`🌐 Switching agent voice to: ${detected}`);
@@ -256,7 +263,6 @@ export default defineAgent({
     });
 
     session.on(voice.AgentSessionEventTypes.Error, (e) => {
-      // Ignore Sarvam 408 errors as they are non-fatal idle signals
       if (e.toString().includes('408')) {
         console.log('💤 Session: Muffling Sarvam TTS 408 Idle Sleep error');
       } else {
@@ -268,7 +274,6 @@ export default defineAgent({
 
 // Process-level stability
 process.on('unhandledRejection', (reason) => {
-  // Suppress Sarvam 408 errors that leak out of the plugin's async blocks
   if (reason?.toString().includes('408')) {
     console.log('💤 Process: Muffling Unhandled Sarvam 408');
   } else {
@@ -276,10 +281,10 @@ process.on('unhandledRejection', (reason) => {
   }
 });
 
-// Start the CLI Runner
+// ✅ FIX 8: Use fileURLToPath(import.meta.url) instead of process.argv[1]
 cli.runApp(
   new ServerOptions({
-    agent: process.argv[1],
+    agent: fileURLToPath(import.meta.url),
     agentName: 'vak-sahayak',
     initializeProcessTimeout: 30_000,
   })

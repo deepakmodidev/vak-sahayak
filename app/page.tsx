@@ -41,8 +41,8 @@ function MainHeader() {
           <Link href="/portal" className="bg-[#111111] text-white px-6 py-2 rounded-full text-xs font-semibold hover:bg-black transition-all">
             Launch Portal
           </Link>
-          <Link href="https://github.com/decodewithdeepak/vak-sahayak" target="_blank" className="bg-secondary text-secondary-foreground border border-border px-6 py-2 rounded-full text-xs font-semibold hover:bg-muted transition-all">
-            GitHub
+          <Link href="/portal" className="bg-secondary text-secondary-foreground border border-border px-6 py-2 rounded-full text-xs font-semibold hover:bg-muted transition-all">
+            Platform Help
           </Link>
         </div>
       </div>
