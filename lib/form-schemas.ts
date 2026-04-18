@@ -34,10 +34,8 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { id: 'full_name', label: 'Full Name', icon: User },
       { id: 'father_name', label: "Father's Name", icon: UserCircle },
       { id: 'age', label: 'Age / DOB', icon: Calendar },
-      { id: 'gender', label: 'Gender', icon: Fingerprint },
       { id: 'address', label: 'Current Address', icon: MapPin },
       { id: 'mobile', label: 'Mobile Number', icon: Phone },
-      { id: 'email', label: 'Email Address', icon: Mail },
     ],
     instructions:
       "Help the user update their Aadhaar. Ask for their name, father's name, age, gender, current address, mobile number, and email address.",

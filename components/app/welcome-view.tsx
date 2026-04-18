@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AppConfig } from '@/app-config';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
 
@@ -15,6 +16,7 @@ interface WelcomeViewProps {
   appConfig: AppConfig;
   startButtonText: string;
   onStartCall: (serviceId: string) => void;
+  isConnecting?: boolean;
   className?: string;
 }
 
@@ -22,6 +24,7 @@ export const WelcomeView = ({
   appConfig,
   startButtonText,
   onStartCall,
+  isConnecting = false,
   className,
 }: WelcomeViewProps) => {
   const [selectedService, setSelectedService] = React.useState('aadhaar');
@@ -81,7 +84,7 @@ export const WelcomeView = ({
         </div>
 
         {/* Right Side: Interaction */}
-        <div className="bg-card border-primary flex flex-col gap-10 rounded-[3rem] border p-10 shadow-sm">
+        <div className="bg-card border-primary flex flex-col gap-10 rounded-[3rem] border p-10 shadow-sm transition-all duration-500">
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
               <span className="text-foreground text-xs font-medium tracking-[0.2em] uppercase">
@@ -92,21 +95,21 @@ export const WelcomeView = ({
               {services.map((service) => (
                 <button
                   key={service.id}
+                  disabled={isConnecting}
                   onClick={() => setSelectedService(service.id)}
                   className={cn(
                     'group flex items-center justify-between rounded-[1.5rem] border p-6 text-left transition-all duration-300',
                     selectedService === service.id
                       ? 'bg-primary text-primary-foreground border-primary scale-[1.02]'
-                      : 'bg-card border-primary hover:border-primary hover:bg-muted'
+                      : 'bg-card border-primary hover:border-primary hover:bg-muted',
+                    isConnecting && 'cursor-not-allowed opacity-50'
                   )}
                 >
                   <div>
                     <h3
                       className={cn(
                         'text-lg font-medium transition-colors',
-                        selectedService === service.id
-                          ? 'text-primary-foreground'
-                          : 'text-foreground'
+                        selectedService === service.id ? 'text-primary-foreground' : 'text-foreground'
                       )}
                     >
                       {service.name}
@@ -114,9 +117,7 @@ export const WelcomeView = ({
                     <p
                       className={cn(
                         'mt-1 text-xs transition-colors',
-                        selectedService === service.id
-                          ? 'text-primary-foreground'
-                          : 'text-foreground'
+                        selectedService === service.id ? 'text-primary-foreground' : 'text-foreground'
                       )}
                     >
                       {service.description}
@@ -133,13 +134,28 @@ export const WelcomeView = ({
             </div>
           </div>
 
-          <Button
-            size="lg"
-            onClick={handleStart}
-            className="bg-primary text-primary-foreground hover:bg-primary/95 h-16 w-full rounded-[1.5rem] border-none text-xl font-semibold shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
-          >
-            {startButtonText}
-          </Button>
+          <div className="relative overflow-hidden rounded-[1.5rem]">
+            <Button
+              size="lg"
+              disabled={isConnecting}
+              onClick={handleStart}
+              className={cn(
+                'group relative z-10 h-16 w-full rounded-[1.5rem] border-none text-xl font-semibold shadow-sm transition-all active:scale-[0.99]',
+                isConnecting
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/95 hover:scale-[1.01]'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span>{isConnecting ? 'Connecting...' : 'Fill the Form by Voice'}</span>
+                {isConnecting ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
+                )}
+              </div>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

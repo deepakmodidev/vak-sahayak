@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 // eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
-import { useSessionContext } from '@livekit/components-react';
+import { useRemoteParticipants, useSessionContext } from '@livekit/components-react';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { type FormData, FormVisualizer } from '@/components/app/form-visualizer';
@@ -44,29 +45,43 @@ export function ViewController({
   onServiceSelect,
 }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
+  const remoteParticipants = useRemoteParticipants();
   const { resolvedTheme } = useTheme();
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  // In this app, the agent is the only remote participant.
+  // We strictly wait for at least one remote participant to join.
+  const agentParticipant = remoteParticipants[0];
+  const isAgentReady = isConnected && !!agentParticipant;
 
   const handleStartCall = (serviceId: string) => {
     onServiceSelect(serviceId);
-    // Use setTimeout to ensure state is updated before token fetch if needed,
-    // though start() usually triggers asynchronously anyway.
+    setIsConnecting(true);
     setTimeout(() => start(), 10);
   };
 
+  // Reset locally tracked connecting state once agent is ready
+  useEffect(() => {
+    if (isAgentReady) {
+      setIsConnecting(false);
+    }
+  }, [isAgentReady]);
+
   return (
     <AnimatePresence mode="wait">
-      {/* Welcome view */}
-      {!isConnected && (
+      {/* Welcome view stays until agent is actually ready */}
+      {!isAgentReady && (
         <MotionWelcomeView
           key="welcome"
           {...VIEW_MOTION_PROPS}
           appConfig={appConfig}
           startButtonText={appConfig.startButtonText}
           onStartCall={handleStartCall}
+          isConnecting={isConnecting}
         />
       )}
-      {/* Session view */}
-      {isConnected && (
+      {/* Session view only shows once agent joined */}
+      {isAgentReady && (
         <motion.div
           key="session-root"
           className="bg-background fixed inset-0 flex flex-col items-center justify-center overflow-y-auto p-12"

@@ -10,11 +10,9 @@ import {
   llm as llmHelper,
   voice,
 } from '@livekit/agents';
-
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
-
 import { FORM_SCHEMAS } from './lib/form-schemas';
 
 config({ path: '.env.local' });
@@ -22,7 +20,6 @@ config({ path: '.env.local' });
 const encoder = new TextEncoder();
 
 export default defineAgent({
-
   /* ---------------- PREWARM ---------------- */
 
   prewarm: async (proc: JobProcess) => {
@@ -37,7 +34,6 @@ export default defineAgent({
   /* ---------------- ENTRY ---------------- */
 
   entry: async (ctx: JobContext) => {
-
     /* ---------- VALIDATE METADATA ---------- */
 
     const metadata = JSON.parse(ctx.job.metadata ?? '{}');
@@ -49,15 +45,11 @@ export default defineAgent({
 
     const schema = FORM_SCHEMAS[serviceType];
 
-    const fieldIds = schema.fields.map(f => f.id) as [string, ...string[]];
+    const fieldIds = schema.fields.map((f) => f.id) as [string, ...string[]];
 
     /* ---------- SAFE DATA PUBLISH ---------- */
 
-    const publishUpdate = async (
-      type: string,
-      payload: unknown
-    ): Promise<void> => {
-
+    const publishUpdate = async (type: string, payload: unknown): Promise<void> => {
       const participant = ctx.room.localParticipant;
       if (!participant) return;
 
@@ -97,20 +89,9 @@ export default defineAgent({
     const submitForm = llmHelper.tool({
       description: 'Submit form after confirmation.',
       parameters: z.object({
-        userHasConfirmed: z.preprocess(
-          (value) => {
-            if (typeof value === 'string') {
-              const normalized = value.trim().toLowerCase();
-              if (normalized === 'true') return true;
-              if (normalized === 'false') return false;
-            }
-            return value;
-          },
-          z.boolean()
-        ),
+        userHasConfirmed: z.boolean().describe('Must be true to submit.'),
       }),
       execute: async ({ userHasConfirmed }) => {
-
         if (!userHasConfirmed) {
           return 'User confirmation required.';
         }
@@ -131,9 +112,7 @@ export default defineAgent({
 
     /* ---------- MODELS ---------- */
 
-    const apiKey =
-      process.env.OPENAI_API_KEY ??
-      process.env.GROQ_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY ?? process.env.GROQ_API_KEY;
 
     if (!apiKey) {
       throw new Error('Missing API key');
@@ -209,6 +188,7 @@ export default defineAgent({
       targetLanguageCode: 'en-IN',
       streaming: false,
     });
+    tts.setMaxListeners(0);
 
     /* ---------- AGENT ---------- */
 
@@ -218,9 +198,7 @@ You are Vak Sahayak helping complete:
 ${schema.title}
 
 Collect fields strictly in order:
-${schema.fields.map((f, i) =>
-        `${i + 1}. ${f.label} (${f.id})`
-      ).join('\n')}
+${schema.fields.map((f, i) => `${i + 1}. ${f.label} (${f.id})`).join('\n')}
 
 Rules:
 - Ask one field at a time
@@ -228,6 +206,7 @@ Rules:
 - Call update_form_field after valid input
 - Never hallucinate
 - Only submit after explicit confirmation
+- Ensure tool parameters are passed correctly as JSON types (e.g. booleans as true/false, not "true"/"false")
 `,
       tools: {
         update_form_field: updateField,
@@ -281,8 +260,7 @@ Rules:
       greeted = true;
 
       session.generateReply({
-        instructions:
-          `Welcome the user and ask if they are ready to begin the ${schema.title} form.`,
+        instructions: `Welcome the user and ask if they are ready to begin the ${schema.title} form.`,
       });
     };
 
@@ -296,19 +274,13 @@ Rules:
 
     /* ---------- EVENTS ---------- */
 
-    session.on(
-      voice.AgentSessionEventTypes.Close,
-      () => {
-        console.log('Session closed');
-      }
-    );
+    session.on(voice.AgentSessionEventTypes.Close, () => {
+      console.log('Session closed');
+    });
 
-    session.on(
-      voice.AgentSessionEventTypes.Error,
-      (e: unknown) => {
-        console.error('Session error:', e);
-      }
-    );
+    session.on(voice.AgentSessionEventTypes.Error, (e: unknown) => {
+      console.error('Session error:', e);
+    });
 
     ctx.addShutdownCallback(async () => {
       await session.close();
