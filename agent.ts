@@ -10,9 +10,11 @@ import {
   llm as llmHelper,
   voice,
 } from '@livekit/agents';
+
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
+
 import { FORM_SCHEMAS } from './lib/form-schemas';
 
 config({ path: '.env.local' });
@@ -20,108 +22,180 @@ config({ path: '.env.local' });
 const encoder = new TextEncoder();
 
 export default defineAgent({
+
+  /* ---------------- PREWARM ---------------- */
+
   prewarm: async (proc: JobProcess) => {
-    proc.userData.vad = await silero.VAD.load({
+    const vad = await silero.VAD.load({
       activationThreshold: 0.7,
       minSpeechDuration: 0.25,
     });
+
+    proc.userData.vad = vad;
   },
 
+  /* ---------------- ENTRY ---------------- */
+
   entry: async (ctx: JobContext) => {
-    // ✅ FIX 1: ctx.connect() moved to AFTER session.start()
-    console.log(`🚀 Connecting to room: ${ctx.room.name} (Job: ${ctx.job.id})`);
 
-    // --- 1. METADATA & SCHEMA INITIALIZATION ---
-    let serviceType: string;
-    try {
-      const meta = JSON.parse(ctx.job.metadata || '{}');
-      serviceType = meta.serviceType;
+    /* ---------- VALIDATE METADATA ---------- */
 
-      if (!serviceType || !FORM_SCHEMAS[serviceType]) {
-        throw new Error(`Missing or invalid serviceType: ${serviceType}`);
-      }
-    } catch (e) {
-      throw new Error(`❌ Metadata validation failed: ${e instanceof Error ? e.message : e}`);
+    const metadata = JSON.parse(ctx.job.metadata ?? '{}');
+    const serviceType: string = metadata.serviceType;
+
+    if (!serviceType || !FORM_SCHEMAS[serviceType]) {
+      throw new Error(`Invalid serviceType: ${serviceType}`);
     }
 
-    const currentSchema = FORM_SCHEMAS[serviceType];
-    const fieldIdsRaw = currentSchema.fields.map((f) => f.id);
-    if (fieldIdsRaw.length === 0) throw new Error(`Schema "${serviceType}" has no fields`);
-    const fieldIds = fieldIdsRaw as [string, ...string[]];
+    const schema = FORM_SCHEMAS[serviceType];
 
-    const publishUpdate = async (type: string, payload: any) => {
+    const fieldIds = schema.fields.map(f => f.id) as [string, ...string[]];
+
+    /* ---------- SAFE DATA PUBLISH ---------- */
+
+    const publishUpdate = async (
+      type: string,
+      payload: unknown
+    ): Promise<void> => {
+
       const participant = ctx.room.localParticipant;
-      if (!participant) throw new Error('Assistant disconnected');
+      if (!participant) return;
+
       const message = JSON.stringify({ type, payload });
-      await participant.publishData(encoder.encode(message), { reliable: true });
+      const data = encoder.encode(message);
+
+      await participant.publishData(data, { reliable: true });
     };
 
-    // --- 2. LLM TOOL DEFINITIONS ---
-    const updateFormField = llmHelper.tool({
-      description: 'Update a specific field in the government form.',
+    /* ---------- TOOLS ---------- */
+
+    const updateField = llmHelper.tool({
+      description: 'Update a form field.',
       parameters: z.object({
         field: z.enum(fieldIds),
         value: z.string(),
       }),
       execute: async ({ field, value }) => {
-        console.log(`📝 Update: ${field} = ${value}`);
-        try {
-          await publishUpdate('form_update', { [field]: value });
-          return `Successfully updated ${field} to ${value}.`;
-        } catch (e) {
-          console.warn(`⚠️ publishUpdate failed: ${e}`);
-          return `Updated ${field} locally (sync failed).`;
-        }
+        await publishUpdate('form_update', { [field]: value });
+        return `Updated ${field}`;
       },
     });
 
     const focusField = llmHelper.tool({
-      description: 'Signal that you are about to ask for a specific field. Call BEFORE asking.',
+      description: 'Focus a field before asking.',
       parameters: z.object({
         field: z.enum(fieldIds),
       }),
       execute: async ({ field }) => {
-        console.log(`🎯 Focus: ${field}`);
-        try {
-          await publishUpdate('form_focus', { fieldId: field });
-          return `UI focused on ${field}.`;
-        } catch (e) {
-          console.warn(`⚠️ publishUpdate failed: ${e}`);
-          return `Focus shifted to ${field} locally.`;
-        }
+        await publishUpdate('form_focus', { fieldId: field });
+        return `Focused ${field}`;
       },
     });
 
-    let formSubmitted = false;
+    let submitted = false;
+
     const submitForm = llmHelper.tool({
-      description:
-        'Submit the final government form. Only call this AFTER the user has explicitly confirmed the summary.',
+      description: 'Submit form after confirmation.',
       parameters: z.object({
-        userHasConfirmed: z
-          .boolean()
-          .describe('Must be explicitly true if the user confirmed the summary.'),
+        userHasConfirmed: z.preprocess(
+          (value) => {
+            if (typeof value === 'string') {
+              const normalized = value.trim().toLowerCase();
+              if (normalized === 'true') return true;
+              if (normalized === 'false') return false;
+            }
+            return value;
+          },
+          z.boolean()
+        ),
       }),
       execute: async ({ userHasConfirmed }) => {
-        if (!userHasConfirmed) return 'You must ask the user to confirm first.';
-        if (formSubmitted) return 'Error: Form already submitted.';
 
-        formSubmitted = true;
-        try {
-          await publishUpdate('form_submitted', { status: 'success' });
-          console.log(`✅ Form submitted successfully.`);
-          return 'The form has been submitted and processed.';
-        } catch (e) {
-          console.warn(`⚠️ publishUpdate failed: ${e}`);
-          return 'Form was processed but sync failed.';
+        if (!userHasConfirmed) {
+          return 'User confirmation required.';
         }
+
+        if (submitted) {
+          return 'Form already submitted.';
+        }
+
+        submitted = true;
+
+        await publishUpdate('form_submitted', {
+          status: 'success',
+        });
+
+        return 'Form submitted successfully.';
       },
     });
 
-    // --- 3. MODEL INITIALIZATION ---
-    const llm = new openai.LLM({
-      model: 'llama-3.3-70b-versatile',
-      baseURL: 'https://api.groq.com/openai/v1',
-    });
+    /* ---------- MODELS ---------- */
+
+    const apiKey =
+      process.env.OPENAI_API_KEY ??
+      process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('Missing API key');
+    }
+
+    const MODEL_CHAIN = [
+      process.env.GROQ_MODEL,
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'openai/gpt-oss-20b',
+      'llama-3.1-8b-instant',
+      'llama-3.3-70b-versatile',
+    ].filter((value): value is string => Boolean(value));
+
+    let llm!: openai.LLM;
+    let activeModel = MODEL_CHAIN[MODEL_CHAIN.length - 1];
+
+    for (const model of MODEL_CHAIN) {
+      try {
+        const candidate = new openai.LLM({
+          model,
+          baseURL: 'https://api.groq.com/openai/v1',
+          apiKey,
+        });
+
+        const testCtx = llmHelper.ChatContext.empty();
+        testCtx.addMessage({ role: 'user', content: 'hi' });
+
+        const stream = candidate.chat({ chatCtx: testCtx });
+        for await (const _ of stream) {
+          break;
+        }
+
+        llm = candidate;
+        activeModel = model;
+        console.log(`✅ LLM selected: ${model}`);
+        break;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        const statusCode =
+          typeof error === 'object' && error !== null && 'statusCode' in error
+            ? (error as { statusCode?: number }).statusCode
+            : undefined;
+        const isRateLimited = statusCode === 429 || message.includes('rate_limit_exceeded');
+
+        console.warn(
+          `⚠️ ${model} ${isRateLimited ? 'rate-limited' : `failed: ${message}`} — trying next...`
+        );
+      }
+    }
+
+    if (!llm) {
+      const fallbackModel = 'llama-3.1-8b-instant';
+      llm = new openai.LLM({
+        model: fallbackModel,
+        baseURL: 'https://api.groq.com/openai/v1',
+        apiKey,
+      });
+      activeModel = fallbackModel;
+      console.warn('⚠️ All model probes failed, using llama-3.1-8b-instant directly');
+    }
+
+    console.log(`🤖 Active LLM: ${activeModel}`);
 
     const stt = new sarvam.STT({
       model: 'saaras:v3',
@@ -133,167 +207,117 @@ export default defineAgent({
       model: 'bulbul:v3',
       speaker: 'shubh',
       targetLanguageCode: 'en-IN',
+      streaming: false,
     });
 
-    // 🚨 HACK: Intercept Sarvam TTS 408 before it reaches AgentSession
-    const originalEmit = tts.emit.bind(tts);
-    tts.emit = (eventName: string | symbol, ...args: any[]) => {
-      if (eventName === 'error' || eventName === 'tts_error') {
-        const err = args[0];
-        if (err && err.toString().includes('408')) {
-          console.log('🔇 Hacked: Silently swallowing Sarvam 408 idle timeout');
-          return false;
-        }
-      }
-      return originalEmit(eventName as any, ...args);
-    };
+    /* ---------- AGENT ---------- */
 
-    // --- 4. AGENT DEFINITION ---
     const agent = new voice.Agent({
       instructions: `
-        # IDENTITY & PURPOSE
-        You are "Vak Sahayak", a highly professional and empathetic AI assistant for Government of India forms. 
-        Your current task is to help the user complete: ${currentSchema.title}.
-        
-        # STYLE & LANGUAGE
-        - Use the SAME LANGUAGE as the user. If they speak Hindi, respond in Hindi. If they use English, respond in English.
-        - Be concise. Do not use filler words.
-        
-        # MISSION
-        Guide the user through the ${currentSchema.title} form.
-        Description: ${currentSchema.description}
-        
-        # FIELDS TO COLLECT (STRICT ORDER)
-        ${currentSchema.fields.map((f, i) => `${i + 1}. ${f.label} (${f.id})`).join('\n')}
-        
-        # OPERATING PROTOCOL
-        1. FOCUS: Call 'focus_field' immediately before asking the user for a piece of information.
-        2. ATOMICity: Ask for exactly one field at a time.
-        3. DATA: Call 'update_form_field' as soon as the user provides a valid answer.
-        4. SEQUENTIAL: Do not skip fields. Complete field N before moving to N+1.
-        5. SUBMISSION: Once all fields are filled, provide a detailed summary of all information collected. Ask the user to verify the details and explicitly tell them to suggest any changes if needed. Only call 'submit_form' once the user gives a clear final confirmation to proceed.
-        
-        # CRITICAL: TOOL INTERFACE
-        1. Use the provided tools via the JSON function calling schema ONLY.
-        2. EXTREMELY IMPORTANT: DO NOT wrap function calls in <function=...> XML tags. 
-        3. NEVER write "function=" in your text response to the user.
-        4. If you write code or function calls in the chat, the user will hear them as nonsense.
-        
-        # NEVER HALLUCINATE DATA
-        - DO NOT guess or use placeholders like "user_provided_value".
-        - If you do not have the information for a field, you MUST ASK the user for it.
-        - Only call 'update_form_field' when you have real, specific data from the user.
-      `,
+You are Vak Sahayak helping complete:
+${schema.title}
+
+Collect fields strictly in order:
+${schema.fields.map((f, i) =>
+        `${i + 1}. ${f.label} (${f.id})`
+      ).join('\n')}
+
+Rules:
+- Ask one field at a time
+- Call focus_field before asking
+- Call update_form_field after valid input
+- Never hallucinate
+- Only submit after explicit confirmation
+`,
       tools: {
-        update_form_field: updateFormField,
+        update_form_field: updateField,
         focus_field: focusField,
         submit_form: submitForm,
       },
     });
 
-    // ✅ FIX 2: vad accessed via ctx.proc directly
-    const vad = ctx.proc.userData.vad! as silero.VAD;
+    /* ---------- SESSION ---------- */
+
+    const vad = ctx.proc.userData.vad as silero.VAD | undefined;
+
+    if (!vad) {
+      throw new Error('VAD not initialized');
+    }
 
     const session = new voice.AgentSession({
       stt,
       llm,
       tts,
-      vad, // ✅ FIX 3: vad passed to session, not silero-less
+      vad,
       turnHandling: {
-        turnDetection: 'vad', // ✅ FIX 4: 'stt' is invalid, use 'vad'
-        endpointing: { minDelay: 0.07 },
+        turnDetection: 'vad',
+        endpointing: { minDelay: 0.1 },
       },
     });
 
-    ctx.addShutdownCallback(async () => {
-      console.log(`🛑 Job ${ctx.job.id} is shutting down...`);
+    /* ---------- START SESSION ---------- */
+
+    await ctx.connect();
+
+    await session.start({
+      room: ctx.room,
+      agent,
+      inputOptions: {
+        audioEnabled: true,
+        textEnabled: true,
+        closeOnDisconnect: true,
+      },
+      outputOptions: {
+        transcriptionEnabled: true,
+      },
     });
 
-    // ✅ FIX 5: session.start() BEFORE ctx.connect()
-    await session.start({ room: ctx.room, agent });
-    await ctx.connect();
-    console.log(`🚀 Connected to room: ${ctx.room.name}`);
+    /* ---------- GREETING ---------- */
 
-    // --- 5. GREETING & EVENTS ---
     let greeted = false;
 
-    const triggerGreeting = async () => {
+    const greet = (): void => {
       if (greeted) return;
       greeted = true;
-      console.log(`👋 Greeting user for: ${currentSchema.title}`);
-      // ✅ FIX 6: generateReply returns a handle, not a Promise — don't await
+
       session.generateReply({
-        instructions: `Welcome the user warmly, introduce yourself as 'Vak Sahayak', and explain that you are newly active to assist with the ${currentSchema.title} form. Ask if they are ready to start.`,
+        instructions:
+          `Welcome the user and ask if they are ready to begin the ${schema.title} form.`,
       });
     };
 
-    // ✅ FIX 7: .catch() on unhandled async calls
-    if ([...ctx.room.remoteParticipants.values()].length > 0) {
-      triggerGreeting().catch((e) => console.warn('⚠️ Greeting failed:', e));
+    if (ctx.room.remoteParticipants.size > 0) {
+      greet();
     }
+
     ctx.room.on('participantConnected', () => {
-      triggerGreeting().catch((e) => console.warn('⚠️ Greeting failed:', e));
+      greet();
     });
 
-    tts.on('error', (e) => {
-      if (e.toString().includes('408')) {
-        console.log('💤 Sarvam TTS: Idle Sleep (408)');
-      } else {
-        console.warn('⚠️ TTS Warning:', e);
+    /* ---------- EVENTS ---------- */
+
+    session.on(
+      voice.AgentSessionEventTypes.Close,
+      () => {
+        console.log('Session closed');
       }
-    });
+    );
 
-    llm.on('error', (e) => console.warn('⚠️ LLM Warning:', e));
-
-    const SUPPORTED_TTS_LANGUAGES = [
-      'bn-IN',
-      'en-IN',
-      'gu-IN',
-      'hi-IN',
-      'kn-IN',
-      'ml-IN',
-      'mr-IN',
-      'od-IN',
-      'pa-IN',
-      'ta-IN',
-      'te-IN',
-    ];
-
-    session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
-      if (ev.isFinal) {
-        console.log(`👤 User: ${ev.transcript}`);
-        const detected = ev.language;
-        if (detected && detected !== 'unknown' && SUPPORTED_TTS_LANGUAGES.includes(detected)) {
-          console.log(`🌐 Switching agent voice to: ${detected}`);
-          if (typeof (tts as any).updateOptions === 'function') {
-            (tts as any).updateOptions({ targetLanguageCode: detected });
-          } else {
-            console.warn('⚠️ tts.updateOptions not supported on this plugin version');
-          }
-        }
+    session.on(
+      voice.AgentSessionEventTypes.Error,
+      (e: unknown) => {
+        console.error('Session error:', e);
       }
-    });
+    );
 
-    session.on(voice.AgentSessionEventTypes.Error, (e) => {
-      if (e.toString().includes('408')) {
-        console.log('💤 Session: Muffling Sarvam TTS 408 Idle Sleep error');
-      } else {
-        console.error('🚨 Session Error:', e);
-      }
+    ctx.addShutdownCallback(async () => {
+      await session.close();
     });
   },
 });
 
-// Process-level stability
-process.on('unhandledRejection', (reason) => {
-  if (reason?.toString().includes('408')) {
-    console.log('💤 Process: Muffling Unhandled Sarvam 408');
-  } else {
-    console.warn('⚠️ Global Unhandled Rejection:', reason);
-  }
-});
+/* ---------------- CLI ---------------- */
 
-// ✅ FIX 8: Use fileURLToPath(import.meta.url) instead of process.argv[1]
 cli.runApp(
   new ServerOptions({
     agent: fileURLToPath(import.meta.url),
