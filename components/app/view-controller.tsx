@@ -5,13 +5,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useSessionContext } from '@livekit/components-react';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
+import { type FormData, FormVisualizer } from '@/components/app/form-visualizer';
 import { WelcomeView } from '@/components/app/welcome-view';
-import { FormVisualizer, type FormData } from '@/components/app/form-visualizer';
 
 const MotionWelcomeView = motion.create(WelcomeView);
 const MotionSessionView = motion.create(AgentSessionView_01);
 
-const VIEW_MOTION_PROPS = {
+const VIEW_MOTION_PROPS: any = {
   variants: {
     visible: { opacity: 1 },
     hidden: { opacity: 0 },
@@ -47,7 +47,7 @@ export function ViewController({
 
   const handleStartCall = (serviceId: string) => {
     onServiceSelect(serviceId);
-    // Use setTimeout to ensure state is updated before token fetch if needed, 
+    // Use setTimeout to ensure state is updated before token fetch if needed,
     // though start() usually triggers asynchronously anyway.
     setTimeout(() => start(), 10);
   };
@@ -66,31 +66,29 @@ export function ViewController({
       )}
       {/* Session view */}
       {isConnected && (
-        <motion.div 
+        <motion.div
           key="session-root"
-          className="fixed inset-0 flex flex-col items-center justify-center p-12 bg-background overflow-y-auto"
+          className="bg-background fixed inset-0 flex flex-col items-center justify-center overflow-y-auto p-12"
           {...VIEW_MOTION_PROPS}
         >
           {/* Global Header */}
-          <div className="absolute top-0 left-0 w-full p-8 z-50 flex items-center justify-between">
+          <div className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-8">
             <div className="flex items-center gap-3">
-              <img 
-                src="/vak-sahayak.png" 
-                alt="Vak Sahayak" 
-                className="w-12 h-12 object-contain" 
-              />
+              <img src="/vak-sahayak.png" alt="Vak Sahayak" className="h-12 w-12 object-contain" />
               <div>
-                <h2 className="text-xl font-semibold text-foreground tracking-tight leading-none">Vak Sahayak</h2>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] mt-1.5">
+                <h2 className="text-foreground text-xl leading-none font-semibold tracking-tight">
+                  Vak Sahayak
+                </h2>
+                <p className="text-muted-foreground mt-1.5 text-xs font-medium tracking-[0.2em] uppercase">
                   Voice Portal Active
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mt-12">
+          <div className="mt-12 grid w-full max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
             {/* Left: Agent Visualization */}
-            <div className="relative h-full flex items-center justify-center">
+            <div className="relative flex h-full items-center justify-center">
               <MotionSessionView
                 key="session-view"
                 supportsChatInput={appConfig.supportsChatInput}
@@ -115,19 +113,17 @@ export function ViewController({
             </div>
 
             {/* Right: Interaction State (Tracker or Success) */}
-              <FormVisualizer 
-                data={formData} 
-                activeField={activeField}
-                isSubmitted={isSubmitted} 
-                appConfig={appConfig}
-                serviceType={serviceType}
-                onReset={() => window.location.reload()}
-              />
+            <FormVisualizer
+              data={formData}
+              activeField={activeField}
+              isSubmitted={isSubmitted}
+              appConfig={appConfig}
+              serviceType={serviceType}
+              onReset={() => window.location.reload()}
+            />
           </div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
-
-

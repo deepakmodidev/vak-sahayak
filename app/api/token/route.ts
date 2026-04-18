@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { AccessToken, type AccessTokenOptions, type VideoGrant, AgentDispatchClient } from 'livekit-server-sdk';
+import {
+  AccessToken,
+  type AccessTokenOptions,
+  AgentDispatchClient,
+  type VideoGrant,
+} from 'livekit-server-sdk';
 import { RoomConfiguration } from '@livekit/protocol';
 
 type ConnectionDetails = {
@@ -47,9 +52,9 @@ export async function POST(req: Request) {
     // Official Pattern: Explicit Agent Dispatch with Job Metadata
     const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
     await agentDispatchClient.createDispatch(roomName, 'vak-sahayak', {
-      metadata: JSON.stringify({ 
+      metadata: JSON.stringify({
         branding: 'Vak Sahayak',
-        serviceType: serviceType
+        serviceType: serviceType,
       }),
     });
     console.log(`--- ✅ Agent dispatched to ${roomName} (Service: ${serviceType}) ---`);

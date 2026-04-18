@@ -18,7 +18,6 @@
   font-display: swap;
 }
 
-
 :root {
   --radius: 0.625rem;
   --background: #fafafa;
@@ -50,8 +49,7 @@
   --font-sans:
     'Matter', var(--font-public-sans), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif:
-    'Season Mix', serif;
+  --font-serif: 'Season Mix', serif;
   --font-mono:
     var(--font-commit-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     'Liberation Mono', 'Courier New', monospace;

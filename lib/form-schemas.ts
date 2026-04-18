@@ -1,9 +1,22 @@
-import { User, Calendar, MapPin, Phone, UserCircle, CreditCard, IndianRupee, Users2, Home, Fingerprint, Mail } from 'lucide-react';
+import React from 'react';
+import {
+  Calendar,
+  CreditCard,
+  Fingerprint,
+  Home,
+  IndianRupee,
+  Mail,
+  MapPin,
+  Phone,
+  User,
+  UserCircle,
+  Users2,
+} from 'lucide-react';
 
 export interface FormField {
   id: string;
   label: string;
-  icon: any; // Lucide icon component
+  icon: React.ElementType; // Lucide icon component
 }
 
 export interface FormSchema {
@@ -26,7 +39,8 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { id: 'mobile', label: 'Mobile Number', icon: Phone },
       { id: 'email', label: 'Email Address', icon: Mail },
     ],
-    instructions: 'Help the user update their Aadhaar. Ask for their name, father\'s name, age, gender, current address, mobile number, and email address.',
+    instructions:
+      "Help the user update their Aadhaar. Ask for their name, father's name, age, gender, current address, mobile number, and email address.",
   },
   pan: {
     title: 'PAN Card Application',
@@ -40,7 +54,8 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { id: 'mobile', label: 'Mobile Number', icon: Phone },
       { id: 'address', label: 'Comm. Address', icon: MapPin },
     ],
-    instructions: 'Assist the user with their PAN card application. Collect their full name, father\'s name, date of birth, gender, 12-digit Aadhaar number, mobile number, and communication address.',
+    instructions:
+      "Assist the user with their PAN card application. Collect their full name, father's name, date of birth, gender, 12-digit Aadhaar number, mobile number, and communication address.",
   },
   ration: {
     title: 'Ration Card Application',
@@ -54,7 +69,8 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { id: 'category', label: 'Category (BPL/APL)', icon: CreditCard },
       { id: 'district', label: 'District / Region', icon: Home },
     ],
-    instructions: 'Help the user with their Ration Card form. Ask for the Head of Family name, their gender, their Aadhaar number, total monthly household income, total family members, category (BPL/APL), and district.',
+    instructions:
+      'Help the user with their Ration Card form. Ask for the Head of Family name, their gender, their Aadhaar number, total monthly household income, total family members, category (BPL/APL), and district.',
   },
 };
 

@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import {
   type JobContext,
@@ -94,9 +94,12 @@ export default defineAgent({
 
     let formSubmitted = false;
     const submitForm = llmHelper.tool({
-      description: 'Submit the final government form. Only call this AFTER the user has explicitly confirmed the summary.',
+      description:
+        'Submit the final government form. Only call this AFTER the user has explicitly confirmed the summary.',
       parameters: z.object({
-        userHasConfirmed: z.boolean().describe('Must be explicitly true if the user confirmed the summary.'),
+        userHasConfirmed: z
+          .boolean()
+          .describe('Must be explicitly true if the user confirmed the summary.'),
       }),
       execute: async ({ userHasConfirmed }) => {
         if (!userHasConfirmed) return 'You must ask the user to confirm first.';
@@ -243,8 +246,17 @@ export default defineAgent({
     llm.on('error', (e) => console.warn('⚠️ LLM Warning:', e));
 
     const SUPPORTED_TTS_LANGUAGES = [
-      'bn-IN', 'en-IN', 'gu-IN', 'hi-IN', 'kn-IN',
-      'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN',
+      'bn-IN',
+      'en-IN',
+      'gu-IN',
+      'hi-IN',
+      'kn-IN',
+      'ml-IN',
+      'mr-IN',
+      'od-IN',
+      'pa-IN',
+      'ta-IN',
+      'te-IN',
     ];
 
     session.on(voice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {

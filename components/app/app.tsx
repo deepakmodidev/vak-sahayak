@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { TokenSource, RoomEvent } from 'livekit-client';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { RoomEvent, TokenSource } from 'livekit-client';
+import { toast } from 'sonner';
 import { useSession } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react/dist/ssr';
 import type { AppConfig } from '@/app-config';
 import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provider';
 import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
+import type { FormData } from '@/components/app/form-visualizer';
 import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
-import type { FormData } from '@/components/app/form-visualizer';
-
-import { toast } from 'sonner';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -45,9 +44,9 @@ export function App({ appConfig }: AppProps) {
       const res = await fetch('/api/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           room_config: {},
-          serviceType: serviceTypeRef.current 
+          serviceType: serviceTypeRef.current,
         }),
       });
       if (!res.ok) throw new Error('Token fetch failed');
@@ -55,9 +54,7 @@ export function App({ appConfig }: AppProps) {
     });
   }, []);
 
-  const session = useSession(
-    tokenSource
-  );
+  const session = useSession(tokenSource);
 
   // Sync Form Data from Agent via Data Packets
   useEffect(() => {
@@ -68,7 +65,7 @@ export function App({ appConfig }: AppProps) {
       try {
         const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
-        
+
         if (data.type === 'form_update') {
           setFormData((prev) => ({ ...prev, ...data.payload }));
           toast.info(`Updated: ${Object.keys(data.payload)[0]}`);
@@ -129,4 +126,3 @@ export function App({ appConfig }: AppProps) {
     </AgentSessionProvider>
   );
 }
-

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, FileText, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/shadcn/utils';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import type { AppConfig } from '@/app-config';
-import { FORM_SCHEMAS, DEFAULT_SERVICE } from '@/lib/form-schemas';
+import { Button } from '@/components/ui/button';
+import { DEFAULT_SERVICE, FORM_SCHEMAS } from '@/lib/form-schemas';
+import { cn } from '@/lib/shadcn/utils';
 
 export interface FormData {
   [key: string]: string;
@@ -19,31 +19,40 @@ interface FormVisualizerProps {
   onReset: () => void;
 }
 
-export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serviceType = DEFAULT_SERVICE, onReset }: FormVisualizerProps) {
+export function FormVisualizer({
+  data,
+  activeField,
+  isSubmitted,
+  appConfig,
+  serviceType = DEFAULT_SERVICE,
+  onReset,
+}: FormVisualizerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const prevDataKeys = useRef<string[]>([]);
   const currentSchema = FORM_SCHEMAS[serviceType] || FORM_SCHEMAS[DEFAULT_SERVICE];
-  const fields = currentSchema.fields.map(field => ({
+  const fields = currentSchema.fields.map((field) => ({
     ...field,
     value: data[field.id],
   }));
 
-  const firstEmptyFieldId = fields.find(f => !f.value)?.id;
+  const firstEmptyFieldId = fields.find((f) => !f.value)?.id;
   const targetFocusId = activeField || firstEmptyFieldId;
 
   // Auto-scroll the active field or most recently updated field into view
   useEffect(() => {
     const currentKeys = Object.keys(data);
     const hasNewData = currentKeys.length > prevDataKeys.current.length;
-    const changedKey = currentKeys.find(key => data[key] !== undefined && !prevDataKeys.current.includes(key));
-    
+    const changedKey = currentKeys.find(
+      (key) => data[key] !== undefined && !prevDataKeys.current.includes(key)
+    );
+
     // Prioritize the deterministically empty field or explicitly focused field.
     const targetId = targetFocusId || changedKey || currentKeys[currentKeys.length - 1];
 
     if (scrollRef.current && targetId) {
       const element = scrollRef.current.querySelector(`[data-field-id="${targetId}"]`);
-      
+
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
@@ -61,7 +70,7 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
   const percentage = Math.round((progress / total) * 100);
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-card border border-primary rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden font-sans h-[600px] flex flex-col">
+    <div className="bg-card border-primary relative mx-auto flex h-[600px] w-full max-w-xl flex-col overflow-hidden rounded-[2.5rem] border p-8 font-sans shadow-sm">
       <AnimatePresence mode="wait">
         {!isSubmitted ? (
           <motion.div
@@ -69,34 +78,35 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col min-h-0"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="flex items-center justify-between mb-8 shrink-0">
+            <div className="mb-8 flex shrink-0 items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
+                <h2 className="text-foreground flex items-center gap-2 text-xl font-semibold tracking-tight">
                   Tracker
                 </h2>
-                <p className="text-xs text-muted-foreground uppercase tracking-[0.2em] font-medium">Current Session</p>
+                <p className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase">
+                  Current Session
+                </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-semibold text-foreground tabular-nums tracking-tighter">{percentage}%</div>
+                <div className="text-foreground text-2xl font-semibold tracking-tighter tabular-nums">
+                  {percentage}%
+                </div>
               </div>
             </div>
 
-            <div className="w-full h-1.5 bg-muted rounded-full mb-8 overflow-hidden shrink-0">
-              <motion.div 
+            <div className="bg-muted mb-8 h-1.5 w-full shrink-0 overflow-hidden rounded-full">
+              <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${percentage}%` }}
                 transition={{ duration: 1, ease: [0.32, 0.72, 0, 1] }}
-                className="h-full bg-primary"
+                className="bg-primary h-full"
               />
             </div>
 
             {/* Scrollable Fields Area */}
-            <div 
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto pr-2 no-scrollbar space-y-3"
-            >
+            <div ref={scrollRef} className="no-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
               <AnimatePresence mode="popLayout">
                 {fields.map((field, index) => (
                   <motion.div
@@ -104,31 +114,35 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
                     data-field-id={field.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08, ease: "easeOut" }}
+                    transition={{ delay: index * 0.08, ease: 'easeOut' }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 border shrink-0",
-                      field.value 
-                        ? "bg-muted border-primary" 
-                        : "bg-transparent border-transparent",
+                      'flex shrink-0 items-center gap-4 rounded-2xl border p-4 transition-all duration-500',
+                      field.value ? 'bg-muted border-primary' : 'border-transparent bg-transparent',
                       targetFocusId === field.id && !field.value
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : ""
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : ''
                     )}
                   >
-                    <div 
+                    <div
                       className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500",
-                        field.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                        'flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-500',
+                        field.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
                       )}
                     >
                       <field.icon size={18} strokeWidth={2.5} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-medium mb-0.5">{field.label}</div>
-                      <div className={cn(
-                        "font-medium truncate text-sm transition-colors duration-500",
-                        field.value ? "text-foreground" : "text-muted-foreground italic"
-                      )}>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-muted-foreground mb-0.5 text-xs font-medium tracking-[0.15em] uppercase">
+                        {field.label}
+                      </div>
+                      <div
+                        className={cn(
+                          'truncate text-sm font-medium transition-colors duration-500',
+                          field.value ? 'text-foreground' : 'text-muted-foreground italic'
+                        )}
+                      >
                         {field.value || 'Waiting for input...'}
                       </div>
                     </div>
@@ -136,7 +150,7 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 10 }}
                       >
                         <CheckCircle2 size={16} className="text-primary" />
                       </motion.div>
@@ -152,27 +166,29 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col items-center justify-center text-center py-4"
+            className="flex flex-1 flex-col items-center justify-center py-4 text-center"
           >
-            <div className="bg-primary p-4 rounded-full mb-6">
+            <div className="bg-primary mb-6 rounded-full p-4">
               <CheckCircle2 size={40} className="text-white" />
             </div>
 
-            <h2 className="text-2xl font-bold text-foreground mb-2">Application Submitted!</h2>
-            <p className="text-sm text-muted-foreground mb-8 max-w-xs leading-relaxed">
+            <h2 className="text-foreground mb-2 text-2xl font-bold">Application Submitted!</h2>
+            <p className="text-muted-foreground mb-8 max-w-xs text-sm leading-relaxed">
               Your {currentSchema.title} has been successfully processed and forwarded.
             </p>
 
-            <div className="w-full space-y-4 mb-8">
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-2xl border border-primary/20">
+            <div className="mb-8 w-full space-y-4">
+              <div className="bg-muted/50 border-primary/20 flex items-center justify-between rounded-2xl border p-4">
                 <div className="flex items-center gap-3">
                   <FileText className="text-primary" size={18} />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reference</span>
+                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                    Reference
+                  </span>
                 </div>
-                <span className="text-sm font-mono font-bold">VS-7729-AK</span>
+                <span className="font-mono text-sm font-bold">VS-7729-AK</span>
               </div>
-              
-              <Button className="w-full bg-primary text-white hover:bg-primary/90 h-12 rounded-xl text-base font-semibold shadow-sm">
+
+              <Button className="bg-primary hover:bg-primary/90 h-12 w-full rounded-xl text-base font-semibold text-white shadow-sm">
                 Track Status
               </Button>
             </div>
@@ -180,7 +196,7 @@ export function FormVisualizer({ data, activeField, isSubmitted, appConfig, serv
             {onReset && (
               <button
                 onClick={onReset}
-                className="text-xs text-foreground hover:text-primary flex items-center gap-2 transition-colors uppercase tracking-widest font-bold"
+                className="text-foreground hover:text-primary flex items-center gap-2 text-xs font-bold tracking-widest uppercase transition-colors"
               >
                 <ArrowLeft size={16} />
                 Start New

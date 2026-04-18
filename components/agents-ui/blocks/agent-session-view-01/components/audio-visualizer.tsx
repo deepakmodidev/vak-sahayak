@@ -144,7 +144,7 @@ export function AudioVisualizer({
           className={sizedClassName}
           {...props}
         >
-          <span className="min-h-2.5 w-2.5 rounded-full bg-muted transition-colors duration-250 ease-linear data-[lk-highlighted=true]:bg-primary" />
+          <span className="bg-muted data-[lk-highlighted=true]:bg-primary min-h-2.5 w-2.5 rounded-full transition-colors duration-250 ease-linear" />
         </MotionAgentAudioVisualizerBar>
       );
     }

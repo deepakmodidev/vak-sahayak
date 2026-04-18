@@ -1,5 +1,5 @@
-import { AccessToken, AgentDispatchClient } from 'livekit-server-sdk';
 import { config } from 'dotenv';
+import { AccessToken, AgentDispatchClient } from 'livekit-server-sdk';
 
 config({ path: '.env.local' });
 
@@ -9,7 +9,7 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL;
 
 async function testLiveKit() {
   console.log('--- 🧪 Testing LiveKit Configuration ---');
-  
+
   if (!API_KEY || !API_SECRET || !LIVEKIT_URL) {
     console.error('❌ Missing LiveKit credentials in .env.local');
     process.exit(1);
