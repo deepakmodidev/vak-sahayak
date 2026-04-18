@@ -17,7 +17,103 @@ import { FORM_SCHEMAS } from './lib/form-schemas';
 
 config({ path: '.env.local' });
 
+/* -------------------------------------------------------------------------- */
+/*                                  CONSTANTS                                 */
+/* -------------------------------------------------------------------------- */
+
 const encoder = new TextEncoder();
+
+const GREETING_INSTRUCTIONS = `
+Greet the user warmly as "Vak Sahayak". 
+Ask if they are ready to begin filling out the form.
+Keep it brief and professional.
+`;
+
+/* -------------------------------------------------------------------------- */
+/*                               INFRASTRUCTURE                               */
+/* -------------------------------------------------------------------------- */
+
+let masterLlm: openai.LLM | null = null;
+let activeModelName: string = 'unknown';
+
+/**
+ * Singleton LLM Prober
+ * Ensures we only probe Groq once per worker process to minimize latency.
+ */
+async function getMasterLlm(): Promise<{ llm: openai.LLM; model: string }> {
+  if (masterLlm) return { llm: masterLlm, model: activeModelName };
+
+  const apiKey = process.env.OPENAI_API_KEY ?? process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('ERR_MISSING_API_KEY: LLM API key required.');
+
+  const MODEL_CHAIN = [
+    process.env.GROQ_MODEL,
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.3-70b-versatile',
+    'qwen/qwen3-32b',
+    'llama-3.1-8b-instant',
+  ].filter((v): v is string => Boolean(v));
+
+  console.log('🔍 [INFRA] Probing for fast LLM...');
+
+  for (const model of MODEL_CHAIN) {
+    try {
+      console.log(`📡 [INFRA] Testing ${model}...`);
+      const candidate = new openai.LLM({
+        model,
+        baseURL: 'https://api.groq.com/openai/v1',
+        apiKey,
+      });
+
+      // Verification probe: Must yield at least one content token to be considered healthy
+      const testCtx = llmHelper.ChatContext.empty();
+      testCtx.addMessage({ role: 'user', content: 'say ok' });
+      const stream = candidate.chat({ chatCtx: testCtx });
+      
+      let healthy = false;
+      for await (const chunk of stream) {
+        if (chunk.delta?.content) {
+          healthy = true;
+          break;
+        }
+      }
+
+      if (!healthy) throw new Error('Model produced no content');
+
+      masterLlm = candidate;
+      activeModelName = model;
+      console.log(`✅ [INFRA] Master LLM selected: ${model}`);
+      return { llm: masterLlm, model: activeModelName };
+    } catch (e) {
+      console.warn(`⚠️ [INFRA] ${model} probe failed: ${(e as Error).message}`);
+    }
+  }
+
+  throw new Error('FAILED_FAST: No healthy LLM found in chain.');
+}
+
+/**
+ * Dynamic System Prompt Builder
+ */
+function buildInstructions(schema: (typeof FORM_SCHEMAS)[keyof typeof FORM_SCHEMAS]) {
+  return `
+You are Vak Sahayak, a highly efficient AI administrative assistant.
+Your goal is to help the user complete: **${schema.title}**
+
+### Dynamic Workflow:
+Collect fields strictly in order:
+${schema.fields.map((f, i) => `${i + 1}. ${f.label} (${f.id})`).join('\n')}
+
+### Strict Interaction Rules:
+1. **Focus First**: Always call 'focus_field' before asking about a field.
+2. **One at a Time**: Never ask for two pieces of information in one turn.
+3. **Validate & Update**: Call 'update_form_field' immediately after valid input is received.
+4. **Be Concise**: Keep voice responses under 15 words. Avoid long explanations.
+5. **No Hallucination**: If you don't know something or input is unclear, ask specifically.
+6. **Explicit Submission**: Only call 'submit_form' after asking the user: "Should I submit the form for you?"
+7. **JSON Types**: Ensure tool parameters match JSON types exactly (booleans as true/false).
+`;
+}
 
 export default defineAgent({
   /* ---------------- PREWARM ---------------- */
@@ -29,6 +125,8 @@ export default defineAgent({
     });
 
     proc.userData.vad = vad;
+    // Pre-warm the LLM selection in background
+    getMasterLlm().catch(console.error);
   },
 
   /* ---------------- ENTRY ---------------- */
@@ -44,7 +142,6 @@ export default defineAgent({
     }
 
     const schema = FORM_SCHEMAS[serviceType];
-
     const fieldIds = schema.fields.map((f) => f.id) as [string, ...string[]];
 
     /* ---------- SAFE DATA PUBLISH ---------- */
@@ -92,122 +189,26 @@ export default defineAgent({
         userHasConfirmed: z.boolean().describe('Must be true to submit.'),
       }),
       execute: async ({ userHasConfirmed }) => {
-        if (!userHasConfirmed) {
-          return 'User confirmation required.';
-        }
-
-        if (submitted) {
-          return 'Form already submitted.';
-        }
+        if (!userHasConfirmed) return 'User confirmation required.';
+        if (submitted) return 'Form already submitted.';
 
         submitted = true;
-
-        await publishUpdate('form_submitted', {
-          status: 'success',
-        });
-
+        await publishUpdate('form_submitted', { status: 'success' });
         return 'Form submitted successfully.';
       },
     });
 
-    /* ---------- MODELS ---------- */
+    /* --------------------------- MODELS & SESSION ---------------------------- */
 
-    const apiKey = process.env.OPENAI_API_KEY ?? process.env.GROQ_API_KEY;
+    const { llm, model } = await getMasterLlm();
+    console.log(`🤖 [SESSION] Brain: ${model}`);
 
-    if (!apiKey) {
-      throw new Error('Missing API key');
-    }
-
-    const MODEL_CHAIN = [
-      process.env.GROQ_MODEL,
-      'meta-llama/llama-4-scout-17b-16e-instruct',
-      'openai/gpt-oss-20b',
-      'llama-3.1-8b-instant',
-      'llama-3.3-70b-versatile',
-    ].filter((value): value is string => Boolean(value));
-
-    let llm!: openai.LLM;
-    let activeModel = MODEL_CHAIN[MODEL_CHAIN.length - 1];
-
-    for (const model of MODEL_CHAIN) {
-      try {
-        const candidate = new openai.LLM({
-          model,
-          baseURL: 'https://api.groq.com/openai/v1',
-          apiKey,
-        });
-
-        const testCtx = llmHelper.ChatContext.empty();
-        testCtx.addMessage({ role: 'user', content: 'hi' });
-
-        const stream = candidate.chat({ chatCtx: testCtx });
-        for await (const _ of stream) {
-          break;
-        }
-
-        llm = candidate;
-        activeModel = model;
-        console.log(`✅ LLM selected: ${model}`);
-        break;
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        const statusCode =
-          typeof error === 'object' && error !== null && 'statusCode' in error
-            ? (error as { statusCode?: number }).statusCode
-            : undefined;
-        const isRateLimited = statusCode === 429 || message.includes('rate_limit_exceeded');
-
-        console.warn(
-          `⚠️ ${model} ${isRateLimited ? 'rate-limited' : `failed: ${message}`} — trying next...`
-        );
-      }
-    }
-
-    if (!llm) {
-      const fallbackModel = 'llama-3.1-8b-instant';
-      llm = new openai.LLM({
-        model: fallbackModel,
-        baseURL: 'https://api.groq.com/openai/v1',
-        apiKey,
-      });
-      activeModel = fallbackModel;
-      console.warn('⚠️ All model probes failed, using llama-3.1-8b-instant directly');
-    }
-
-    console.log(`🤖 Active LLM: ${activeModel}`);
-
-    const stt = new sarvam.STT({
-      model: 'saaras:v3',
-      languageCode: 'unknown',
-      flushSignal: true,
-    });
-
-    const tts = new sarvam.TTS({
-      model: 'bulbul:v3',
-      speaker: 'shubh',
-      targetLanguageCode: 'en-IN',
-      streaming: false,
-    });
+    const stt = new sarvam.STT({ model: 'saaras:v3', languageCode: 'unknown', flushSignal: true });
+    const tts = new sarvam.TTS({ model: 'bulbul:v3', speaker: 'shubh', targetLanguageCode: 'en-IN', streaming: true });
     tts.setMaxListeners(0);
 
-    /* ---------- AGENT ---------- */
-
     const agent = new voice.Agent({
-      instructions: `
-You are Vak Sahayak helping complete:
-${schema.title}
-
-Collect fields strictly in order:
-${schema.fields.map((f, i) => `${i + 1}. ${f.label} (${f.id})`).join('\n')}
-
-Rules:
-- Ask one field at a time
-- Call focus_field before asking
-- Call update_form_field after valid input
-- Never hallucinate
-- Only submit after explicit confirmation
-- Ensure tool parameters are passed correctly as JSON types (e.g. booleans as true/false, not "true"/"false")
-`,
+      instructions: buildInstructions(schema),
       tools: {
         update_form_field: updateField,
         focus_field: focusField,
@@ -224,53 +225,37 @@ Rules:
     }
 
     const session = new voice.AgentSession({
+      vad: ctx.proc.userData.vad as silero.VAD,
       stt,
       llm,
       tts,
-      vad,
       turnHandling: {
         turnDetection: 'vad',
-        endpointing: { minDelay: 0.1 },
+        endpointing: { minDelay: 0.4 }, // Human-like delay for administrative dictation
       },
     });
 
-    /* ---------- START SESSION ---------- */
+    /* ----------------------------- START FLOW -------------------------------- */
 
     await ctx.connect();
-
     await session.start({
       room: ctx.room,
       agent,
-      inputOptions: {
-        audioEnabled: true,
-        textEnabled: true,
-        closeOnDisconnect: true,
-      },
-      outputOptions: {
-        transcriptionEnabled: true,
-      },
     });
 
-    /* ---------- GREETING ---------- */
+    // Signal READINESS to UI
+    if (ctx.room.localParticipant) {
+      await ctx.room.localParticipant.setAttributes({ is_ready: 'true' });
+    }
 
-    let greeted = false;
-
-    const greet = (): void => {
-      if (greeted) return;
-      greeted = true;
-
+    const greet = () => {
       session.generateReply({
-        instructions: `Welcome the user and ask if they are ready to begin the ${schema.title} form.`,
+        instructions: `Welcome the user to the "${schema.title}" portal using the style of: ${GREETING_INSTRUCTIONS}`,
       });
     };
 
-    if (ctx.room.remoteParticipants.size > 0) {
-      greet();
-    }
-
-    ctx.room.on('participantConnected', () => {
-      greet();
-    });
+    if (ctx.room.remoteParticipants.size > 0) greet();
+    ctx.room.on('participantConnected', greet);
 
     /* ---------- EVENTS ---------- */
 
@@ -280,9 +265,15 @@ Rules:
 
     session.on(voice.AgentSessionEventTypes.Error, (e: unknown) => {
       console.error('Session error:', e);
+      publishUpdate('agent_error', {
+        message: e instanceof Error ? e.message : 'Unexpected session failure',
+      }).catch(console.error);
     });
 
     ctx.addShutdownCallback(async () => {
+      if (ctx.room.localParticipant) {
+        await ctx.room.localParticipant.setAttributes({ is_ready: 'false' });
+      }
       await session.close();
     });
   },

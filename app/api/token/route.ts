@@ -33,36 +33,41 @@ export async function POST(req: Request) {
     if (!API_SECRET) throw new Error('LIVEKIT_API_SECRET is not defined');
 
     const body = await req.json();
-    const serviceType = body?.serviceType || 'general';
+    const { serviceType, dispatch, roomName, participantIdentity } = body;
+
+    if (!serviceType) {
+      return new NextResponse('MISSING_SERVICE_TYPE: Service type must be provided.', { status: 400 });
+    }
+    if (!roomName || !participantIdentity) {
+      return new NextResponse('MISSING_SESSION_IDS: Sticky session IDs must be provided by frontend.', { status: 400 });
+    }
 
     const roomConfig = body?.room_config
       ? RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true })
       : undefined;
 
-    const participantName = 'user';
-    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+    // Derived identifiers - no random generation on backend to ensure sticky sessions
 
     const participantToken = await createParticipantToken(
-      { identity: participantIdentity, name: participantName },
+      { identity: participantIdentity },
       roomName,
       roomConfig
     );
 
-    // Official Pattern: Explicit Agent Dispatch with Job Metadata
-    const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
-    await agentDispatchClient.createDispatch(roomName, 'vak-sahayak', {
-      metadata: JSON.stringify({
-        branding: 'Vak Sahayak',
-        serviceType: serviceType,
-      }),
-    });
-    console.log(`--- ✅ Agent dispatched to ${roomName} (Service: ${serviceType}) ---`);
+    if (dispatch === true) {
+      const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
+      await agentDispatchClient.createDispatch(roomName, 'vak-sahayak', {
+        metadata: JSON.stringify({ branding: 'Vak Sahayak', serviceType }),
+      });
+      console.log(`--- 🚀 DISPATCH: ${serviceType} in ${roomName} ---`);
+    } else {
+      console.log(`--- 🎫 TOKEN: ${participantIdentity} ---`);
+    }
 
     const data: ConnectionDetails = {
       serverUrl: LIVEKIT_URL,
       roomName,
-      participantName,
+      participantName: participantIdentity,
       participantToken,
     };
 

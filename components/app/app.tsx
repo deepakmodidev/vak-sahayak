@@ -39,6 +39,17 @@ export function App({ appConfig }: AppProps) {
     serviceTypeRef.current = serviceType;
   }, [serviceType]);
 
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  
+  // Sticky Sessions: Generate IDs once per page load strictly on the frontend
+  const { sessionId, pId } = useMemo(() => ({
+    sessionId: `room_${Math.random().toString(36).slice(2, 7)}`,
+    pId: `user_${Math.random().toString(36).slice(2, 7)}`,
+  }), []);
+
+  // Track if the user explicitly clicked start to avoid eager dispatch on mount
+  const dispatchRequested = useRef(false);
+
   const tokenSource = useMemo(() => {
     return TokenSource.custom(async () => {
       const res = await fetch('/api/token', {
@@ -47,12 +58,15 @@ export function App({ appConfig }: AppProps) {
         body: JSON.stringify({
           room_config: {},
           serviceType: serviceTypeRef.current,
+          dispatch: dispatchRequested.current,
+          roomName: sessionId,
+          participantIdentity: pId,
         }),
       });
       if (!res.ok) throw new Error('Token fetch failed');
       return res.json();
     });
-  }, []);
+  }, [sessionId, pId]); // Session-stable dependencies
 
   const session = useSession(tokenSource);
 
@@ -76,6 +90,10 @@ export function App({ appConfig }: AppProps) {
         } else if (data.type === 'form_submitted') {
           setIsSubmitted(true);
           toast.success('Government form submitted successfully!');
+        } else if (data.type === 'agent_error') {
+          const msg = data.payload.message;
+          setSessionError(msg);
+          toast.error(`Agent Error: ${msg}`);
         }
       } catch (err) {
         console.error('Error parsing data packet:', err);
@@ -98,12 +116,15 @@ export function App({ appConfig }: AppProps) {
           activeField={activeField}
           isSubmitted={isSubmitted}
           serviceType={serviceType}
+          externalError={sessionError}
           onServiceSelect={(type) => {
+            dispatchRequested.current = true; // Signal that the next token fetch should summon the agent
             setServiceType(type);
             serviceTypeRef.current = type; // Synchronous update for token boundary
             setFormData({});
             setActiveField(null);
             setIsSubmitted(false);
+            setSessionError(null);
           }}
         />
       </main>

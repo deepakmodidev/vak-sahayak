@@ -17,6 +17,7 @@ interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: (serviceId: string) => void;
   isConnecting?: boolean;
+  error?: string | null;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const WelcomeView = ({
   startButtonText,
   onStartCall,
   isConnecting = false,
+  error = null,
   className,
 }: WelcomeViewProps) => {
   const [selectedService, setSelectedService] = React.useState('aadhaar');
@@ -156,6 +158,12 @@ export const WelcomeView = ({
               </div>
             </Button>
           </div>
+
+          {error && (
+            <div className="bg-destructive/10 text-destructive rounded-[1rem] p-4 text-center text-sm font-medium animate-in fade-in slide-in-from-top-1">
+              {error}
+            </div>
+          )}
         </div>
       </section>
     </div>

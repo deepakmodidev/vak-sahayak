@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 // eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
 import { useRemoteParticipants, useSessionContext } from '@livekit/components-react';
@@ -33,6 +34,7 @@ interface ViewControllerProps {
   activeField: string | null;
   isSubmitted: boolean;
   serviceType: string;
+  externalError?: string | null;
   onServiceSelect: (id: string) => void;
 }
 
@@ -42,20 +44,23 @@ export function ViewController({
   activeField,
   isSubmitted,
   serviceType,
+  externalError,
   onServiceSelect,
 }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const remoteParticipants = useRemoteParticipants();
   const { resolvedTheme } = useTheme();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   // In this app, the agent is the only remote participant.
-  // We strictly wait for at least one remote participant to join.
+  // We wait specifically for the 'is_ready' attribute to ensure the voice session is alive.
   const agentParticipant = remoteParticipants[0];
-  const isAgentReady = isConnected && !!agentParticipant;
+  const isAgentReady = isConnected && agentParticipant?.attributes?.is_ready === 'true';
 
   const handleStartCall = (serviceId: string) => {
     onServiceSelect(serviceId);
+    setLastError(null);
     setIsConnecting(true);
     setTimeout(() => start(), 10);
   };
@@ -66,6 +71,28 @@ export function ViewController({
       setIsConnecting(false);
     }
   }, [isAgentReady]);
+
+  // Handle external errors (propagated from App data packets)
+  useEffect(() => {
+    if (externalError) {
+      setIsConnecting(false);
+      setLastError(externalError);
+    }
+  }, [externalError]);
+
+  // Connection Timeout Guard: Reset if agent doesn't respond within 20s
+  useEffect(() => {
+    if (!isConnecting || isAgentReady) return;
+
+    const timer = setTimeout(() => {
+      setIsConnecting(false);
+      const msg = 'Connection timed out. Please try again.';
+      setLastError(msg);
+      toast.error(msg);
+    }, 20000);
+
+    return () => clearTimeout(timer);
+  }, [isConnecting, isAgentReady]);
 
   return (
     <AnimatePresence mode="wait">
@@ -78,6 +105,7 @@ export function ViewController({
           startButtonText={appConfig.startButtonText}
           onStartCall={handleStartCall}
           isConnecting={isConnecting}
+          error={lastError}
         />
       )}
       {/* Session view only shows once agent joined */}
