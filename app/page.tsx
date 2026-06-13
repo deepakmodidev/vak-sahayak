@@ -14,7 +14,7 @@ function BackgroundMotif() {
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-10 w-full overflow-hidden opacity-60">
       <img
-        src="https://assets.sarvam.ai/assets/pages/home/hero-gradient.svg"
+        src="/sarvam/hero-gradient.svg"
         className="h-auto w-full -translate-y-2/3 scale-150 transform object-cover"
         alt=""
       />
@@ -68,7 +68,7 @@ function HeroSection() {
   return (
     <section className="flex max-w-6xl flex-col items-center px-6 pt-32 pb-16 text-center">
       <div className="mb-4">
-        <img src="https://assets.sarvam.ai/assets/motifs/ui/motif.svg" alt="" className="h-10 w-auto" />
+        <img src="/sarvam/motif.svg" alt="" className="h-10 w-auto" />
       </div>
 
       <div className="mx-auto mb-10 flex w-full max-w-md flex-col items-center">
@@ -113,7 +113,7 @@ function HeroSection() {
         <div className="flex scale-90 flex-wrap items-center justify-center gap-x-16 gap-y-8 opacity-50 contrast-125 grayscale">
           <div className="text-3xl font-bold tracking-widest">LiveKit</div>
           <img
-            src="https://assets.sarvam.ai/assets/brand/logos/sarvam-wordmark-black.svg"
+            src="/sarvam/sarvam-wordmark-black.svg"
             className="h-5"
             alt="Sarvam AI"
           />
@@ -151,7 +151,7 @@ function VisionSection() {
           </div>
           <div className="relative lg:w-1/2">
             <img
-              src="https://assets.sarvam.ai/tr:f-auto/assets/logos/customers/home-section-2.webp"
+              src="/sarvam/home-section-2.jpg"
               alt="Vision Map"
               className="h-auto w-full rounded-3xl"
             />
@@ -172,7 +172,7 @@ function TechnologyPipeline() {
     >
       {/* Sovereign Mesh Gradient */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(190,18,60,0.05),transparent)]"></div>
-      <div className="pointer-events-none absolute top-0 left-0 h-full w-full rotate-180 transform bg-[url('https://assets.sarvam.ai/assets/pages/home/hero-gradient.svg')] opacity-[0.03] grayscale"></div>
+      <div className="pointer-events-none absolute top-0 left-0 h-full w-full rotate-180 transform bg-[url('/sarvam/hero-gradient.svg')] opacity-[0.03] grayscale"></div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <div className="mb-24 flex flex-col items-center text-center">
@@ -316,7 +316,7 @@ function ImpactSection() {
             >
               <div>
                 <img
-                  src="https://www.sarvam.ai/assets/motifs/models/model-03.svg"
+                  src="/sarvam/model-03.svg"
                   alt=""
                   className="mb-10 h-12 w-auto opacity-40 grayscale transition-all duration-500 group-hover:opacity-100 group-hover:grayscale-0"
                 />
@@ -405,7 +405,7 @@ function LinguisticMosaic() {
             <div className="group relative mx-auto w-full max-w-sm lg:max-w-xl">
               <div className="bg-primary/5 group-hover:bg-primary/10 absolute inset-0 scale-150 rounded-full blur-3xl transition-all duration-700"></div>
               <img
-                src="https://www.sarvam.ai/assets/motifs/models/model-01.svg"
+                src="/sarvam/model-01.svg"
                 alt="Vak Sahayak Motif"
                 className="relative z-10 h-auto w-full opacity-100 drop-shadow-2xl"
               />
@@ -446,7 +446,7 @@ function CTASection() {
           </div>
           <div className="pointer-events-none absolute -bottom-16 left-1/2 h-64 w-64 -translate-x-1/2">
             <img
-              src="https://assets.sarvam.ai/assets/motifs/ui/motif.svg"
+              src="/sarvam/motif.svg"
               className="h-full w-full rotate-180 transform object-contain mix-blend-screen"
               alt=""
             />

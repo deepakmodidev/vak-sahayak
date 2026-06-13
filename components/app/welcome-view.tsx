@@ -70,13 +70,13 @@ export const WelcomeView = ({
               </span>
               <div className="flex items-center gap-6">
                 <img
-                  src="https://media.brand.dev/8eaa65e9-6bb4-49e2-9cef-d45fcfbe6f39.svg"
+                  src="/sarvam/sarvam-icon.svg"
                   alt="Sarvam Icon"
                   className="h-10 w-10"
                 />
                 <div className="bg-foreground h-8 w-px" />
                 <img
-                  src="https://assets.sarvam.ai/assets/brand/logos/sarvam-wordmark-black.svg"
+                  src="/sarvam/sarvam-wordmark-black.svg"
                   alt="Sarvam AI"
                   className="h-6 w-auto"
                 />
