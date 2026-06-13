@@ -28,9 +28,11 @@ export const revalidate = 0;
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV !== 'development') {
-    throw new Error(
-      'THIS API ROUTE IS INSECURE. DO NOT USE THIS ROUTE IN PRODUCTION WITHOUT AN AUTHENTICATION LAYER.'
-    );
+    // This token + agent-dispatch endpoint is UNAUTHENTICATED. It's enabled in
+    // production so the Vercel-hosted frontend can mint tokens, but anyone who
+    // can reach this URL can mint LiveKit tokens / dispatch agents against your
+    // project. Add an auth layer + rate limiting before real production use.
+    console.warn('[token] serving an unauthenticated token endpoint in production');
   }
 
   try {
@@ -86,8 +88,19 @@ export async function POST(req: Request) {
           await Promise.all(
             existing.map((d) => agentDispatchClient.deleteDispatch(d.id, roomName).catch(() => {}))
           );
+          // Send the resolved schema (icon-stripped — React components aren't
+          // serializable, and the agent doesn't need them) so the agent stays
+          // schema-agnostic. lib/form-schemas.ts is the single source of truth.
+          const form = FORM_SCHEMAS[serviceType];
           await agentDispatchClient.createDispatch(roomName, AGENT_NAME, {
-            metadata: JSON.stringify({ branding: 'Vak Sahayak', serviceType }),
+            metadata: JSON.stringify({
+              branding: 'Vak Sahayak',
+              serviceType,
+              schema: {
+                title: form.title,
+                fields: form.fields.map((f) => ({ id: f.id, label: f.label })),
+              },
+            }),
           });
           console.log(`--- 🚀 DISPATCH: ${serviceType} in ${roomName} ---`);
         }

@@ -1,0 +1,19 @@
+# voice-agent is its own pnpm root (isolated install for a self-contained deploy).
+# pnpm 11 FAILS `pnpm install` (ERR_PNPM_IGNORED_BUILDS) unless every dependency
+# with a native build script is explicitly allowed here. These are the ones the
+# agent pulls in: onnxruntime-node (Silero VAD), the ffmpeg binary (audio,
+# platform-specific), esbuild (tsx), sharp, protobufjs.
+allowBuilds:
+  '@ffmpeg-installer/linux-x64': true
+  '@ffmpeg-installer/win32-x64': true
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
+onlyBuiltDependencies:
+  - '@ffmpeg-installer/linux-x64'
+  - '@ffmpeg-installer/win32-x64'
+  - esbuild
+  - onnxruntime-node
+  - protobufjs
+  - sharp

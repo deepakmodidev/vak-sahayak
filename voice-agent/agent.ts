@@ -13,7 +13,18 @@ import {
 import * as openai from '@livekit/agents-plugin-openai';
 import * as sarvam from '@livekit/agents-plugin-sarvam';
 import * as silero from '@livekit/agents-plugin-silero';
-import { FORM_SCHEMAS, type FormSchema } from './lib/form-schemas';
+
+// The form to fill arrives in the dispatch job metadata — the single source of
+// truth is the frontend's lib/form-schemas.ts. The agent is schema-agnostic and
+// fills whatever shape it's handed, so it carries no form catalog of its own.
+interface FormField {
+  id: string;
+  label: string;
+}
+interface FormSchema {
+  title: string;
+  fields: FormField[];
+}
 
 config({ path: '.env.local' });
 
@@ -244,14 +255,16 @@ export default defineAgent({
   },
 
   entry: async (ctx: JobContext) => {
-    let metadata: { serviceType?: string } = {};
+    let metadata: { serviceType?: string; schema?: FormSchema } = {};
     try {
       metadata = JSON.parse(ctx.job.metadata ?? '{}');
     } catch {
       console.warn('⚠️ [ENTRY] Malformed job metadata; using empty defaults.');
     }
-    const schema = metadata.serviceType ? FORM_SCHEMAS[metadata.serviceType] : undefined;
-    if (!schema) throw new Error(`Invalid serviceType: ${metadata.serviceType}`);
+    const schema = metadata.schema;
+    if (!schema || !Array.isArray(schema.fields) || schema.fields.length === 0) {
+      throw new Error(`No form schema in job metadata (serviceType: ${metadata.serviceType ?? 'unknown'})`);
+    }
 
     const publishUpdate: PublishFn = async (type, payload) => {
       const p = ctx.room.localParticipant;
