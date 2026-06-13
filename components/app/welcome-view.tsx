@@ -76,7 +76,7 @@ export const WelcomeView = ({
                 />
                 <div className="bg-foreground h-8 w-px" />
                 <img
-                  src="https://assets.sarvam.ai/assets/svgs/sarvam-wordmark-black.svg"
+                  src="https://assets.sarvam.ai/assets/brand/logos/sarvam-wordmark-black.svg"
                   alt="Sarvam AI"
                   className="h-6 w-auto"
                 />

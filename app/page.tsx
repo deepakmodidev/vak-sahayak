@@ -14,7 +14,7 @@ function BackgroundMotif() {
   return (
     <div className="pointer-events-none absolute top-0 left-0 z-10 w-full overflow-hidden opacity-60">
       <img
-        src="https://assets.sarvam.ai/assets/home/hero-gradient.svg"
+        src="https://assets.sarvam.ai/assets/pages/home/hero-gradient.svg"
         className="h-auto w-full -translate-y-2/3 scale-150 transform object-cover"
         alt=""
       />
@@ -26,11 +26,11 @@ function BackgroundMotif() {
 
 function MainHeader() {
   return (
-    <header className="fixed top-4 z-50 w-full max-w-6xl px-6">
-      <div className="border-border flex items-center justify-between rounded-full border bg-white px-8 py-3 shadow">
-        <Link href="/" className="flex items-center gap-3">
+    <header className="fixed top-4 z-50 w-full max-w-6xl px-4 sm:px-6">
+      <div className="border-border flex items-center justify-between gap-2 rounded-full border bg-white px-4 py-3 shadow sm:px-8">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <img src="/vak-sahayak.png" alt="Logo" className="h-8 w-auto" />
-          <span className="font-serif text-2xl font-bold tracking-tight">Vak Sahayak</span>
+          <span className="font-serif text-xl font-bold tracking-tight sm:text-2xl">Vak Sahayak</span>
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-10 text-xs font-medium tracking-widest uppercase lg:flex">
           <Link href="/portal" className="hover:text-primary transition-colors">
@@ -43,16 +43,16 @@ function MainHeader() {
             Impact
           </Link>
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/portal"
-            className="rounded-full bg-[#111111] px-6 py-2 text-xs font-semibold text-white transition-all hover:bg-black"
+            className="rounded-full bg-[#111111] px-4 py-2 text-xs font-semibold whitespace-nowrap text-white transition-all hover:bg-black sm:px-6"
           >
             Launch Portal
           </Link>
           <Link
             href="/portal"
-            className="bg-secondary text-secondary-foreground border-border hover:bg-muted rounded-full border px-6 py-2 text-xs font-semibold transition-all"
+            className="bg-secondary text-secondary-foreground border-border hover:bg-muted hidden rounded-full border px-6 py-2 text-xs font-semibold whitespace-nowrap transition-all sm:inline-flex"
           >
             Platform Help
           </Link>
@@ -68,7 +68,7 @@ function HeroSection() {
   return (
     <section className="flex max-w-6xl flex-col items-center px-6 pt-32 pb-16 text-center">
       <div className="mb-4">
-        <img src="https://assets.sarvam.ai/assets/svgs/motif.svg" alt="" className="h-10 w-auto" />
+        <img src="https://assets.sarvam.ai/assets/motifs/ui/motif.svg" alt="" className="h-10 w-auto" />
       </div>
 
       <div className="mx-auto mb-10 flex w-full max-w-md flex-col items-center">
@@ -113,7 +113,7 @@ function HeroSection() {
         <div className="flex scale-90 flex-wrap items-center justify-center gap-x-16 gap-y-8 opacity-50 contrast-125 grayscale">
           <div className="text-3xl font-bold tracking-widest">LiveKit</div>
           <img
-            src="https://assets.sarvam.ai/assets/svgs/sarvam-wordmark-black.svg"
+            src="https://assets.sarvam.ai/assets/brand/logos/sarvam-wordmark-black.svg"
             className="h-5"
             alt="Sarvam AI"
           />
@@ -151,7 +151,7 @@ function VisionSection() {
           </div>
           <div className="relative lg:w-1/2">
             <img
-              src="https://assets.sarvam.ai/tr:f-auto/assets/companyLogos/home-section-2.webp"
+              src="https://assets.sarvam.ai/tr:f-auto/assets/logos/customers/home-section-2.webp"
               alt="Vision Map"
               className="h-auto w-full rounded-3xl"
             />
@@ -172,7 +172,7 @@ function TechnologyPipeline() {
     >
       {/* Sovereign Mesh Gradient */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(190,18,60,0.05),transparent)]"></div>
-      <div className="pointer-events-none absolute top-0 left-0 h-full w-full rotate-180 transform bg-[url('https://assets.sarvam.ai/assets/home/hero-gradient.svg')] opacity-[0.03] grayscale"></div>
+      <div className="pointer-events-none absolute top-0 left-0 h-full w-full rotate-180 transform bg-[url('https://assets.sarvam.ai/assets/pages/home/hero-gradient.svg')] opacity-[0.03] grayscale"></div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <div className="mb-24 flex flex-col items-center text-center">
@@ -316,7 +316,7 @@ function ImpactSection() {
             >
               <div>
                 <img
-                  src="https://assets.sarvam.ai/assets/product-samvaad/products/samvaad-motif-02.svg"
+                  src="https://www.sarvam.ai/assets/motifs/models/model-03.svg"
                   alt=""
                   className="mb-10 h-12 w-auto opacity-40 grayscale transition-all duration-500 group-hover:opacity-100 group-hover:grayscale-0"
                 />
@@ -337,6 +337,46 @@ function ImpactSection() {
 // --- 7. SLIDE 04: LINGUISTIC MOSAIC ---
 
 function LinguisticMosaic() {
+  const languages = [
+    { name: 'English', script: 'Hello' },
+    { name: 'Hindi', script: 'नमस्ते' },
+    { name: 'Bengali', script: 'নমস্কার' },
+    { name: 'Marathi', script: 'नमस्कार' },
+    { name: 'Telugu', script: 'నమస్కారం' },
+    { name: 'Tamil', script: 'வணக்கம்' },
+    { name: 'Gujarati', script: 'નમસ્તે' },
+    { name: 'Urdu', script: 'السلام علیکم' },
+    { name: 'Kannada', script: 'ನಮಸ್ಕಾರ' },
+    { name: 'Odia', script: 'ନମସ୍କାର' },
+    { name: 'Malayalam', script: 'നമസ്കാരം' },
+    { name: 'Punjabi', script: 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ' },
+    { name: 'Assamese', script: 'নমস্কাৰ' },
+    { name: 'Maithili', script: 'नमस्कार' },
+    { name: 'Santali', script: 'ᱡᱚᱦᱟᱨ' },
+    { name: 'Kashmiri', script: 'نمستے' },
+    { name: 'Nepali', script: 'नमस्ते' },
+    { name: 'Sindhi', script: 'نمستي' },
+    { name: 'Konkani', script: 'नमस्कार' },
+    { name: 'Dogri', script: 'नमस्ते' },
+    { name: 'Manipuri', script: 'খুরুমজরি' },
+    { name: 'Bodo', script: 'खुलुमबाय' },
+    { name: 'Sanskrit', script: 'नमो नमः' },
+  ];
+  const mid = Math.ceil(languages.length / 2);
+  const columns = [languages.slice(0, mid), languages.slice(mid)];
+
+  const renderCard = (lang: { name: string; script: string }, i: number) => (
+    <div
+      key={i}
+      className="group hover:border-primary/40 flex cursor-default flex-col items-center justify-center gap-2 rounded-2xl border border-black/[0.06] bg-white/60 px-2 py-4 text-center backdrop-blur-sm transition-all duration-300 hover:bg-white"
+    >
+      <span className="text-foreground text-xl leading-none font-medium">{lang.script}</span>
+      <span className="text-muted-foreground/60 group-hover:text-primary text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors">
+        {lang.name}
+      </span>
+    </div>
+  );
+
   return (
     <section id="languages" className="border-border w-full border-t bg-[#fafafa] py-32">
       <div className="mx-auto max-w-7xl px-6">
@@ -345,7 +385,7 @@ function LinguisticMosaic() {
             04 / 04 — Languages
           </div>
           <h2 className="mb-8 font-serif text-4xl leading-tight md:text-6xl">
-            Voices that Power a Nation.
+            Voices that power a nation
           </h2>
           <p className="text-muted-foreground max-w-3xl text-lg">
             True sovereignty starts with language. Vak Sahayak supports the 22 scheduled languages
@@ -353,56 +393,28 @@ function LinguisticMosaic() {
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
-          <div className="flex justify-center lg:w-5/12">
-            <div className="group relative w-full max-w-sm">
+        {/* Languages flank the motif: grid · image · grid */}
+        <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-stretch lg:gap-10">
+          {/* Left language column */}
+          <div className="grid w-full grid-cols-2 gap-4 lg:flex-1">
+            {columns[0].map(renderCard)}
+          </div>
+
+          {/* Center motif */}
+          <div className="flex w-full items-center justify-center lg:w-[30rem] lg:shrink-0 xl:w-[36rem]">
+            <div className="group relative mx-auto w-full max-w-sm lg:max-w-xl">
               <div className="bg-primary/5 group-hover:bg-primary/10 absolute inset-0 scale-150 rounded-full blur-3xl transition-all duration-700"></div>
               <img
-                src="https://assets.sarvam.ai/assets/product-samvaad/products/samvaad-motif-01.svg"
+                src="https://www.sarvam.ai/assets/motifs/models/model-01.svg"
                 alt="Vak Sahayak Motif"
-                className="relative z-10 h-auto w-full opacity-90 drop-shadow-2xl transition-transform duration-700 group-hover:scale-110"
+                className="relative z-10 h-auto w-full opacity-100 drop-shadow-2xl"
               />
             </div>
           </div>
 
-          <div className="lg:w-7/12">
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {[
-                { name: 'English', script: 'Hello', color: 'bg-slate-50/60' },
-                { name: 'Hindi', script: 'नमस्ते', color: 'bg-orange-50/60' },
-                { name: 'Bengali', script: 'নমস্কার', color: 'bg-blue-50/60' },
-                { name: 'Marathi', script: 'नमस्कार', color: 'bg-emerald-50/60' },
-                { name: 'Telugu', script: 'నమస్కారం', color: 'bg-yellow-50/60' },
-                { name: 'Tamil', script: 'வணக்கம்', color: 'bg-rose-50/60' },
-                { name: 'Gujarati', script: 'નમસ્તે', color: 'bg-indigo-50/60' },
-                { name: 'Urdu', script: 'السلام علیکم', color: 'bg-zinc-50/60' },
-                { name: 'Kannada', script: 'ನಮಸ್ಕಾರ', color: 'bg-cyan-50/60' },
-                { name: 'Odia', script: 'ନମସ୍କାର', color: 'bg-amber-50/60' },
-                { name: 'Malayalam', script: 'നമസ്കാരം', color: 'bg-lime-50/60' },
-                { name: 'Punjabi', script: 'ਸਤਿ ਸ੍ਰੀ ਅকাল', color: 'bg-teal-50/60' },
-                { name: 'Assamese', script: 'নমস্কাৰ', color: 'bg-sky-50/60' },
-                { name: 'Maithili', script: 'नमस्कार', color: 'bg-fuchsia-50/60' },
-                { name: 'Santali', script: 'ᱡᱚᱦᱟᱨ', color: 'bg-slate-50/60' },
-                { name: 'Kashmiri', script: 'نمستے', color: 'bg-violet-50/60' },
-                { name: 'Nepali', script: 'नमस्ते', color: 'bg-red-50/60' },
-                { name: 'Sindhi', script: 'نمستي', color: 'bg-pink-50/60' },
-                { name: 'Konkani', script: 'नमस्कार', color: 'bg-emerald-50/50' },
-                { name: 'Dogri', script: 'नमस्ते', color: 'bg-indigo-50/50' },
-                { name: 'Manipuri', script: 'খুরুমজরি', color: 'bg-orange-50/50' },
-                { name: 'Bodo', script: 'खुलुमबाय', color: 'bg-blue-50/50' },
-                { name: 'Sanskrit', script: 'नमो नमः', color: 'bg-yellow-50/50' },
-              ].map((lang, i) => (
-                <div
-                  key={i}
-                  className={`border-border rounded-xl border px-3 py-2 ${lang.color} group hover:border-primary flex cursor-default flex-col items-center justify-center text-center transition-all`}
-                >
-                  <div className="mb-0.5 text-lg font-bold text-indigo-950">{lang.script}</div>
-                  <div className="text-muted-foreground group-hover:text-primary text-[9px] font-bold tracking-[0.2em] uppercase">
-                    {lang.name}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Right language column */}
+          <div className="grid w-full grid-cols-2 gap-4 lg:flex-1">
+            {columns[1].map(renderCard)}
           </div>
         </div>
       </div>
@@ -427,14 +439,14 @@ function CTASection() {
             </p>
             <Link
               href="/portal"
-              className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-lg font-bold text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110"
+              className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-sm sm:text-lg font-semibold text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110"
             >
               Get Started Now
             </Link>
           </div>
           <div className="pointer-events-none absolute -bottom-16 left-1/2 h-64 w-64 -translate-x-1/2">
             <img
-              src="https://assets.sarvam.ai/assets/svgs/motif.svg"
+              src="https://assets.sarvam.ai/assets/motifs/ui/motif.svg"
               className="h-full w-full rotate-180 transform object-contain mix-blend-screen"
               alt=""
             />
@@ -449,7 +461,7 @@ function CTASection() {
 
 export default function MarketingPage() {
   return (
-    <div className="text-foreground selection:bg-primary relative flex min-h-screen flex-col items-center bg-transparent font-sans selection:text-white">
+    <div className="text-foreground selection:bg-primary relative flex min-h-screen w-full flex-col items-center overflow-x-clip bg-transparent font-sans selection:text-white">
       <BackgroundMotif />
 
       <div className="relative z-10 flex w-full flex-col items-center">
