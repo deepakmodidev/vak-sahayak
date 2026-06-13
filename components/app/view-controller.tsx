@@ -53,16 +53,24 @@ export function ViewController({
   const [isConnecting, setIsConnecting] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  // In this app, the agent is the only remote participant.
+  // Find the agent explicitly rather than assuming it is the first remote participant.
   // We wait specifically for the 'is_ready' attribute to ensure the voice session is alive.
-  const agentParticipant = remoteParticipants[0];
+  const agentParticipant = remoteParticipants.find((p) => p.isAgent);
   const isAgentReady = isConnected && agentParticipant?.attributes?.is_ready === 'true';
 
+  // Connection state machine: idle (welcome) → connecting (Start clicked) → active (agent ready).
+  const phase: 'idle' | 'connecting' | 'active' = isAgentReady
+    ? 'active'
+    : isConnecting
+      ? 'connecting'
+      : 'idle';
+
+  // Start is the ONLY path that summons the agent: arm dispatch for the chosen form, then connect.
   const handleStartCall = (serviceId: string) => {
-    onServiceSelect(serviceId);
+    onServiceSelect(serviceId); // sets serviceType + arms dispatch (synchronously, via refs)
     setLastError(null);
     setIsConnecting(true);
-    setTimeout(() => start(), 10);
+    start(); // triggers the now-armed token fetch → server dispatches the chosen agent
   };
 
   // Reset locally tracked connecting state once agent is ready
@@ -96,20 +104,19 @@ export function ViewController({
 
   return (
     <AnimatePresence mode="wait">
-      {/* Welcome view stays until agent is actually ready */}
-      {!isAgentReady && (
+      {/* idle / connecting → welcome (with selection + Start); active → session view */}
+      {phase !== 'active' && (
         <MotionWelcomeView
           key="welcome"
           {...VIEW_MOTION_PROPS}
           appConfig={appConfig}
           startButtonText={appConfig.startButtonText}
           onStartCall={handleStartCall}
-          isConnecting={isConnecting}
+          isConnecting={phase === 'connecting'}
           error={lastError}
         />
       )}
-      {/* Session view only shows once agent joined */}
-      {isAgentReady && (
+      {phase === 'active' && (
         <motion.div
           key="session-root"
           className="bg-background fixed inset-0 flex flex-col items-center justify-center overflow-y-auto p-12"
@@ -159,7 +166,6 @@ export function ViewController({
               data={formData}
               activeField={activeField}
               isSubmitted={isSubmitted}
-              appConfig={appConfig}
               serviceType={serviceType}
               onReset={() => window.location.reload()}
             />

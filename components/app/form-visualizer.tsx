@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
 // eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
-import type { AppConfig } from '@/app-config';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_SERVICE, FORM_SCHEMAS } from '@/lib/form-schemas';
 import { cn } from '@/lib/shadcn/utils';
@@ -15,7 +14,6 @@ interface FormVisualizerProps {
   data: FormData;
   activeField?: string | null;
   isSubmitted: boolean;
-  appConfig: AppConfig;
   serviceType: string;
   onReset: () => void;
 }
@@ -64,9 +62,21 @@ export function FormVisualizer({
     prevDataKeys.current = currentKeys;
   }, [data, activeField, targetFocusId]);
 
-  const progress = Object.values(data).filter(Boolean).length;
+  // Count only fields in the CURRENT schema, so stale keys from a previous service
+  // can't push progress past 100% (and guard total === 0 → NaN%).
+  const progress = fields.filter((f) => Boolean(f.value)).length;
   const total = fields.length;
-  const percentage = Math.round((progress / total) * 100);
+  const percentage = total === 0 ? 0 : Math.round((progress / total) * 100);
+
+  // Per-submission reference number (regenerated when a new submission completes).
+  const referenceNumber = useMemo(
+    () =>
+      `VS-${Math.floor(1000 + Math.random() * 9000)}-${Math.random()
+        .toString(36)
+        .slice(2, 4)
+        .toUpperCase()}`,
+    [isSubmitted]
+  );
 
   return (
     <div className="bg-card border-primary relative mx-auto flex h-[600px] w-full max-w-xl flex-col overflow-hidden rounded-[2.5rem] border p-8 font-sans shadow-sm">
@@ -184,7 +194,7 @@ export function FormVisualizer({
                     Reference
                   </span>
                 </div>
-                <span className="font-mono text-sm font-bold">VS-7729-AK</span>
+                <span className="font-mono text-sm font-bold">{referenceNumber}</span>
               </div>
 
               <Button className="bg-primary hover:bg-primary/90 h-12 w-full rounded-xl text-base font-semibold text-white shadow-sm">

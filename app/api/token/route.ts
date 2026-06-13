@@ -6,6 +6,12 @@ import {
   type VideoGrant,
 } from 'livekit-server-sdk';
 import { RoomConfiguration } from '@livekit/protocol';
+import { FORM_SCHEMAS } from '@/lib/form-schemas';
+
+const AGENT_NAME = 'vak-sahayak';
+
+// Rooms with an in-flight dispatch — dedupes concurrent token requests in-process.
+const pendingDispatch = new Set<string>();
 
 type ConnectionDetails = {
   serverUrl: string;
@@ -38,6 +44,9 @@ export async function POST(req: Request) {
     if (!serviceType) {
       return new NextResponse('MISSING_SERVICE_TYPE: Service type must be provided.', { status: 400 });
     }
+    if (!FORM_SCHEMAS[serviceType]) {
+      return new NextResponse(`INVALID_SERVICE_TYPE: "${serviceType}" is not a known form.`, { status: 400 });
+    }
     if (!roomName || !participantIdentity) {
       return new NextResponse('MISSING_SESSION_IDS: Sticky session IDs must be provided by frontend.', { status: 400 });
     }
@@ -54,14 +63,39 @@ export async function POST(req: Request) {
       roomConfig
     );
 
-    if (dispatch === true) {
-      const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
-      await agentDispatchClient.createDispatch(roomName, 'vak-sahayak', {
-        metadata: JSON.stringify({ branding: 'Vak Sahayak', serviceType }),
-      });
-      console.log(`--- 🚀 DISPATCH: ${serviceType} in ${roomName} ---`);
+    // Only dispatch on the request that carries the user's real selection: the client
+    // sets `dispatch: true` after the user picks a service. An earlier pre-connect token
+    // fetch (LiveKit prepareConnection) arrives with dispatch:false and the DEFAULT
+    // serviceType — dispatching on that would lock the room to the wrong form.
+    if (dispatch === true && !pendingDispatch.has(roomName)) {
+      pendingDispatch.add(roomName);
+      try {
+        const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
+        const existing = await agentDispatchClient.listDispatch(roomName).catch(() => []);
+        const hasCorrect = existing.some((d) => {
+          try {
+            return JSON.parse(d.metadata ?? '{}').serviceType === serviceType;
+          } catch {
+            return false;
+          }
+        });
+        if (hasCorrect) {
+          console.log(`--- ♻️ DISPATCH EXISTS (${serviceType}) in ${roomName} ---`);
+        } else {
+          // Remove any stale dispatch (wrong/default serviceType), then dispatch the right one.
+          await Promise.all(
+            existing.map((d) => agentDispatchClient.deleteDispatch(d.id, roomName).catch(() => {}))
+          );
+          await agentDispatchClient.createDispatch(roomName, AGENT_NAME, {
+            metadata: JSON.stringify({ branding: 'Vak Sahayak', serviceType }),
+          });
+          console.log(`--- 🚀 DISPATCH: ${serviceType} in ${roomName} ---`);
+        }
+      } finally {
+        pendingDispatch.delete(roomName);
+      }
     } else {
-      console.log(`--- 🎫 TOKEN: ${participantIdentity} ---`);
+      console.log(`--- 🎫 TOKEN (no dispatch): ${serviceType} in ${roomName} ---`);
     }
 
     const data: ConnectionDetails = {
@@ -75,10 +109,9 @@ export async function POST(req: Request) {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(error);
-      return new NextResponse(error.message, { status: 500 });
-    }
+    console.error(error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return new NextResponse(message, { status: 500 });
   }
 }
 

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { toast as sonnerToast } from 'sonner';
 import { useAgent, useSessionContext } from '@livekit/components-react';
 import { WarningIcon } from '@phosphor-icons/react';
@@ -28,8 +28,18 @@ export function useAgentErrors() {
   const agent = useAgent();
   const { isConnected, end } = useSessionContext();
 
+  // Guard so a 'failed' state is handled exactly once (the agent object's identity
+  // changes on many updates, which would otherwise re-fire the toast and end()).
+  const handledRef = useRef(false);
+
   useEffect(() => {
-    if (isConnected && agent.state === 'failed') {
+    if (agent.state !== 'failed') {
+      handledRef.current = false; // reset so a future failure can fire again
+      return;
+    }
+
+    if (isConnected && !handledRef.current) {
+      handledRef.current = true;
       const reasons = agent.failureReasons;
 
       toastAlert({
