@@ -1,193 +1,139 @@
-# Agent Starter for React
+# Vak Sahayak — वाक् सहायक
 
-This is a starter template for [LiveKit Agents](https://docs.livekit.io/agents) that provides a simple voice interface using [Agents UI](https://livekit.io/ui) components and [LiveKit JavaScript SDK](https://github.com/livekit/client-sdk-js). It supports [voice](https://docs.livekit.io/agents/start/voice-ai), [transcriptions](https://docs.livekit.io/agents/build/text/), and [virtual avatars](https://docs.livekit.io/agents/integrations/avatar).
+**Fill an Indian government form just by speaking, in your own language.**
 
-Also available for:
-[Android](https://github.com/livekit-examples/agent-starter-android) • [Flutter](https://github.com/livekit-examples/agent-starter-flutter) • [Swift](https://github.com/livekit-examples/agent-starter-swift) • [React Native](https://github.com/livekit-examples/agent-starter-react-native)
+Vak Sahayak ("voice helper") is a voice-first assistant for applying to government
+services. A citizen taps one button, speaks naturally, and an AI agent listens,
+asks for each field conversationally, and fills the form for them — no typing, no
+reading dense PDFs, no English required.
 
-<picture>
-  <source srcset="./.github/assets/readme-hero-dark.webp" media="(prefers-color-scheme: dark)">
-  <source srcset="./.github/assets/readme-hero-light.webp" media="(prefers-color-scheme: light)">
-  <img src="./.github/assets/readme-hero-light.webp" alt="App screenshot">
-</picture>
+> **Status: working prototype.** Built as a proposal for a voice-driven government
+> form-filling service. It runs end-to-end on a live URL today (see
+> [Live demo](#live-demo)), but it is **not yet production-hardened** — see
+> [Prototype caveats](#prototype-caveats).
 
-### Features:
+---
 
-- Real-time voice interaction with LiveKit Agents
-- Camera video streaming support
-- Screen sharing capabilities
-- Multiple audio visualizer styles (`bar`, `grid`, `radial`, `wave`, `aura`)
-- Virtual avatar integration
-- Light/dark theme switching with system preference detection
-- Customizable branding, colors, and UI text via configuration
+## The problem
 
-This template is built with Next.js and is free for you to use or modify as you see fit.
+Filling a government form (Aadhaar update, PAN, ration card…) assumes the citizen
+can read the form, type accurately, and often work in English. That excludes a
+large share of the people the services exist for — first-time applicants, elderly
+citizens, low-literacy and non-English speakers, and anyone on a phone.
 
-### Project structure
+Vak Sahayak removes the keyboard. **You talk; it fills.**
 
-This starter uses the [Agents UI](https://livekit.io/ui) components for core UI elements like media controls, audio visualizers, chat transcripts, and providing session data. Shadcn installs components into `components/` folder so you can customize them like any other local component.
+## What it does
+
+1. The citizen picks a service (Aadhaar / PAN / Ration card).
+2. They press **"Fill the Form by Voice"** and just speak.
+3. The voice agent greets them, walks through each field one at a time, confirms
+   what it heard, and fills the on-screen form live as they talk.
+
+### Services in the prototype
+
+| Service | Form | Fields captured |
+| --- | --- | --- |
+| **Aadhaar** | Aadhaar Card Update | Name, gender, father's name, age/DOB, address, mobile, email |
+| **PAN** | PAN Card Application | Name, father's name, DOB, gender, Aadhaar no., mobile, address |
+| **Ration** | Ration Card Application | Head of family, gender, Aadhaar, income, members, category, district |
+
+Adding a new form is a **single-file change** — see [Adding a form](#adding-a-form).
+
+## How it works
+
+Two independent pieces talk over [LiveKit](https://livekit.io):
 
 ```
-agent-starter-react/
-├── app/
-│   ├── api/
-├── components/
-│   ├── agents-ui/     - Agents UI components
-│   ├── ai-elements/   - AI Elements components
-│   ├── app/           - App-specific components
-│   ├── ui/            - Primitive shadcn/ui components
-├── fonts/
-├── hooks/
-├── lib/
-├── public/
-└── package.json
+  ┌─────────────────────────┐         ┌──────────────────────────────┐
+  │  Frontend (Next.js)      │         │  Voice Agent (LiveKit Cloud) │
+  │  — Vercel                │         │  — vak-seva project          │
+  │                          │  voice  │                              │
+  │  • pick service          │◀───────▶│  • Sarvam STT  (speech→text) │
+  │  • mint token + dispatch │  (WebRTC)│  • Groq LLM    (conversation)│
+  │  • render form live      │         │  • Sarvam TTS  (text→speech) │
+  │  • form-schemas.ts ──────┼────────▶│  • fills the form it's handed│
+  │    (source of truth)     │ schema  │    (schema-agnostic)         │
+  └─────────────────────────┘ via job  └──────────────────────────────┘
+                              metadata
 ```
 
-Business logic lives within the `components/app` folder. It's here where the application's state and behavior is managed and the various Shadcn UI components are composed together.
+- **Frontend** (`/` — this repo): Next.js app. The user selects a service; the
+  token route (`app/api/token/route.ts`) mints a LiveKit token **and** dispatches
+  the agent, passing the chosen form's schema in the job metadata.
+- **Voice agent** (`voice-agent/`): a self-contained LiveKit agent deployed to
+  LiveKit Cloud. It carries **no form catalog** — it fills whatever schema arrives
+  in the dispatch metadata. Speech-to-text and text-to-speech run on
+  [Sarvam](https://sarvam.ai) (built for Indian languages); the conversation runs
+  on a Groq-hosted LLM; voice activity detection uses Silero.
 
-| File                  | Description                                                                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session-view.tsx`    | Initializes the application, and LiveKit session. Renders the view controller and session UI including chat transcript, media tiles, and control bar. |
-| `view-controller.tsx` | Manages the transitions between the welcome and session views based on the LiveKit session state.                                                     |
-| `welcome-view.tsx`    | Renders the welcome UI when the LiveKit session is not connected.                                                                                     |
-| `chat-transcript.tsx` | Manages the chat transcript transitions.                                                                                                              |
-| `tile-layout.tsx`     | Manages the layout and transition of media tiles in various application states.                                                                       |
+See [`voice-agent/README.md`](./voice-agent/README.md) for the agent internals.
 
-### Component usage
+## Live demo
 
-Most Agents UI components require access to a LiveKit session object for access to values like agent state or audio tracks. A Session object can be created from a [TokenSource](/reference/client-sdk-js/variables/TokenSource.html), and provided by wrapping the component in an [AgentSessionProvider](/reference/components/shadcn/component/agent-session-provider).
+The agent is deployed on the **`vak-seva`** LiveKit Cloud project and the frontend
+is on Vercel. Open the deployed URL, pick a service, allow the mic, and talk.
 
-See [`components/app/app.tsx`](./components/app/app.tsx) for an example of how this is done in this app.
+## Run it locally
 
-### Customizing components
+You need two terminals — the frontend and the agent.
 
-Agents UI components, like most Shadcn compopnents, take as many primitive attributes as possible. For example, the [AgentControlBar](/reference/components/shadcn/component/agent-control-bar/page.mdoc) component extends `HTMLAttributes<HTMLDivElement>`, so you can pass any props that a div supports. This makes it easy to extend the component with your own styles or functionality.
-
-You can edit any Agents UI component's source code in the `components/agents-ui` directory. For style changes, we recommend passing in tailwind classes to override the default styles. Take a look at the source code to get a sense of how to override a component's default styles.
-
-### Updating components
-
-To update the Agents UI components to the latest publication, run the following command:
-
-```bash
-pnpm shadcn:install
-```
-
-> [!NOTE]
-> The CLI will ask before overwriting any modified files so you can avoid losing any customizations you might have made.
-
-### Installing components
-
-```bash
-pnpm dlx shadcn@latest add @agents-ui/{component-name-a} @agents-ui/{component-name-b}
-```
-
-## Getting started
-
-> [!TIP]
-> If you'd like to try this application without modification, you can deploy an instance in just a few clicks with [LiveKit Cloud Sandbox](https://cloud.livekit.io/projects/p_/sandbox/templates/agent-starter-react).
-
-[![Open on LiveKit](https://img.shields.io/badge/Open%20on%20LiveKit%20Cloud-002CF2?style=for-the-badge&logo=external-link)](https://cloud.livekit.io/projects/p_/sandbox/templates/agent-starter-react)
-
-Run the following command to automatically clone this template.
-
-```bash
-lk app create --template agent-starter-react
-```
-
-Then run the app with:
+**1. Frontend** (repo root):
 
 ```bash
 pnpm install
+cp .env.example .env.local     # add LIVEKIT_URL / API_KEY / API_SECRET, AGENT_NAME=vak-sahayak
+pnpm dev                       # http://localhost:3000
+```
+
+**2. Voice agent** (`voice-agent/`):
+
+```bash
+cd voice-agent
+pnpm install
+cp .env.example .env.local     # add SARVAM_API_KEY, OPENAI_API_KEY (Groq), LIVEKIT_*
 pnpm dev
 ```
 
-And open http://localhost:3000 in your browser.
+Full agent setup and LiveKit Cloud deploy steps are in
+[`voice-agent/README.md`](./voice-agent/README.md).
 
-You'll also need an agent to speak with. Try our starter agent for [Python](https://github.com/livekit-examples/agent-starter-python), [Node.js](https://github.com/livekit-examples/agent-starter-node), or [create your own from scratch](https://docs.livekit.io/agents/start/voice-ai/).
+## Adding a form
 
-## Configuration
-
-This starter is designed to be flexible so you can adapt it to your specific agent use case. You can easily configure it to work with different types of inputs and outputs:
-
-#### Example: App configuration (`app-config.ts`)
+Add an entry to `FORM_SCHEMAS` in [`lib/form-schemas.ts`](./lib/form-schemas.ts):
 
 ```ts
-export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'LiveKit',
-  pageTitle: 'LiveKit Voice Agent',
-  pageDescription: 'A voice agent built with LiveKit',
-
-  supportsChatInput: true,
-  supportsVideoInput: true,
-  supportsScreenShare: true,
-  isPreConnectBufferEnabled: true,
-
-  logo: '/lk-logo.svg',
-  accent: '#002cf2',
-  logoDark: '/lk-logo-dark.svg',
-  accentDark: '#1fd5f9',
-  startButtonText: 'Start call',
-
-  // optional: audio visualization configuration
-  // audioVisualizerColor: '#002cf2',
-  // audioVisualizerColorDark: '#1fd5f9',
-  // audioVisualizerType: 'bar',
-  // audioVisualizerBarCount: 5,
-  // audioVisualizerType: 'radial',
-  // audioVisualizerRadialBarCount: 24,
-  // audioVisualizerRadialRadius: 100,
-  // audioVisualizerType: 'grid',
-  // audioVisualizerGridRowCount: 25,
-  // audioVisualizerGridColumnCount: 25,
-  // audioVisualizerType: 'wave',
-  // audioVisualizerWaveLineWidth: 3,
-  // audioVisualizerType: 'aura',
-  // audioVisualizerAuraColorShift: 0.3,
-
-  // agent dispatch configuration
-  agentName: undefined,
-
-  // LiveKit Cloud Sandbox configuration
-  sandboxId: undefined,
-};
+myservice: {
+  title: 'My Service Application',
+  description: 'One-line description shown to the user.',
+  fields: [
+    { id: 'full_name', label: 'Full Name', icon: User },
+    // …
+  ],
+},
 ```
 
-You can update these values in [`app-config.ts`](./app-config.ts) to customize branding, features, and UI text for your deployment.
+That's it — the new form appears in the picker and the agent fills it. No agent
+code or redeploy needed (the schema travels at dispatch time).
 
-#### Audio visualizer presets
+## Tech stack
 
-Set `audioVisualizerType` in [`app-config.ts`](./app-config.ts) to switch visualizer styles:
+- **Frontend:** Next.js 15, React 19, LiveKit Agents UI components, Tailwind, shadcn/ui
+- **Voice agent:** Node/TypeScript, `@livekit/agents`, Sarvam STT/TTS, Groq LLM, Silero VAD
+- **Infra:** Vercel (frontend) · LiveKit Cloud (agent, `vak-seva` / ap-south)
 
-- `bar` (default): vertical bars with optional `audioVisualizerBarCount`
-- `grid`: dot grid with `audioVisualizerGridRowCount` and `audioVisualizerGridColumnCount`
-- `radial`: circular bars with `audioVisualizerRadialBarCount` and `audioVisualizerRadialRadius`
-- `wave`: oscilloscope-style wave with `audioVisualizerWaveLineWidth`
-- `aura`: shader-based aura with `audioVisualizerAuraColorShift`
+## Prototype caveats
 
-Use `audioVisualizerColor` to set a shared accent color across all visualizer modes.
+This is a proposal prototype, not a deployed government service. Before any real
+use it needs, at minimum:
 
-> [!NOTE]
-> The `sandboxId` is for the LiveKit Cloud Sandbox environment.
-> It is not used for local development.
+- **Authentication** on the token route (`app/api/token/route.ts`) — it is
+  currently **unauthenticated** so anyone with the URL can start a session.
+- **No data is persisted or submitted** — the filled form stays in the browser;
+  it is not sent to any government system.
+- **Privacy & compliance review** for handling Aadhaar/PAN and other personal
+- Production rate limiting, abuse protection, and accessibility testing.
 
-#### Environment Variables
+---
 
-You'll also need to configure your LiveKit credentials in `.env.local` (copy `.env.example` if you don't have one):
-
-```env
-LIVEKIT_API_KEY=your_livekit_api_key
-LIVEKIT_API_SECRET=your_livekit_api_secret
-LIVEKIT_URL=https://your-livekit-server-url
-
-# Agent dispatch (https://docs.livekit.io/agents/server/agent-dispatch)
-# Leave AGENT_NAME blank to enable automatic dispatch
-# Provide an agent name to enable explicit dispatch
-AGENT_NAME=
-```
-
-These are required for the voice agent functionality to work with your LiveKit project.
-
-## Contributing
-
-This template is open source and we welcome contributions! Please open a PR or issue through GitHub, and don't forget to join us in the [LiveKit Community Slack](https://livekit.io/join-slack)!
+*Built on the LiveKit Agents starter for React.*
