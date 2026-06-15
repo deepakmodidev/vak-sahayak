@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { AuthActionState } from '@/app/auth/actions';
 
 type AuthAction = (prev: AuthActionState, formData: FormData) => Promise<AuthActionState>;
@@ -27,8 +29,8 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-const inputClasses =
-  'border-border focus-visible:border-primary focus-visible:ring-primary/30 h-12 w-full rounded-xl border bg-white px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 focus-visible:ring-[3px]';
+const inputClassName =
+  'border-border focus-visible:border-primary focus-visible:ring-primary/30 h-12 rounded-xl bg-white px-4 placeholder:text-muted-foreground/70';
 
 export function AuthForm({ mode, action }: AuthFormProps) {
   const [state, formAction] = useActionState<AuthActionState, FormData>(action, null);
@@ -38,41 +40,41 @@ export function AuthForm({ mode, action }: AuthFormProps) {
     <form action={formAction} className="flex flex-col gap-4">
       {isSignUp && (
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-foreground text-sm font-medium">
+          <Label htmlFor="name" className="text-foreground text-sm font-medium">
             Full name
-          </label>
-          <input
+          </Label>
+          <Input
             id="name"
             name="name"
             type="text"
             autoComplete="name"
             required
             placeholder="Your name"
-            className={inputClasses}
+            className={inputClassName}
           />
         </div>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-foreground text-sm font-medium">
+        <Label htmlFor="email" className="text-foreground text-sm font-medium">
           Email
-        </label>
-        <input
+        </Label>
+        <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
           placeholder="you@example.com"
-          className={inputClasses}
+          className={inputClassName}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-foreground text-sm font-medium">
+        <Label htmlFor="password" className="text-foreground text-sm font-medium">
           Password
-        </label>
-        <input
+        </Label>
+        <Input
           id="password"
           name="password"
           type="password"
@@ -80,7 +82,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           required
           minLength={isSignUp ? 8 : undefined}
           placeholder={isSignUp ? 'At least 8 characters' : '••••••••'}
-          className={inputClasses}
+          className={inputClassName}
         />
       </div>
 

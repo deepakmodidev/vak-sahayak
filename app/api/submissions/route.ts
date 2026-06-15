@@ -6,6 +6,17 @@ import { FORM_SCHEMAS } from '@/lib/form-schemas';
 export const revalidate = 0;
 
 /**
+ * Generates a human-friendly submission reference in the exact format
+ * `VS-NNNN-XX` (4 digits, then 2 uppercase alphanumerics) — e.g. "VS-8846-I0".
+ * Matches the SQL backfill format in db/migrations/002_add_reference.sql.
+ */
+function generateReference(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000); // 1000–9999
+  const suffix = Math.random().toString(36).slice(2, 4).toUpperCase().padEnd(2, '0');
+  return `VS-${digits}-${suffix}`;
+}
+
+/**
  * Persists an in-browser ("voice") form submission for the signed-in user.
  *
  * Body: { serviceType: string, formData: Record<string, string> }
@@ -33,22 +44,54 @@ export async function POST(req: Request) {
         ? (formData as Record<string, unknown>)
         : {};
 
+    const reference = generateReference();
+
     const rows = await sql`
-      INSERT INTO public.form_submissions (user_id, channel, service_type, status, phone, fields)
+      INSERT INTO public.form_submissions (user_id, channel, service_type, status, phone, reference, fields)
       VALUES (
         ${session.user.id},
         'voice',
         ${serviceType},
         'completed',
         NULL,
+        ${reference},
         ${JSON.stringify(fields)}::jsonb
       )
-      RETURNING id
+      RETURNING id, reference
     `;
 
-    return NextResponse.json({ id: rows[0]?.id }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(
+      { id: rows[0]?.id, reference: rows[0]?.reference },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error) {
     console.error('[submissions] failed to persist voice submission', error);
+    return new NextResponse('INTERNAL_ERROR', { status: 500 });
+  }
+}
+
+/**
+ * Returns the signed-in user's submission history, newest first.
+ *
+ * Auth-gated; the user_id always comes from the session, never the request.
+ */
+export async function GET() {
+  try {
+    const { data: session } = await auth.getSession();
+    if (!session?.user) {
+      return new NextResponse('UNAUTHORIZED', { status: 401 });
+    }
+
+    const rows = await sql`
+      SELECT id, channel, service_type, status, reference, fields, created_at
+      FROM public.form_submissions
+      WHERE user_id = ${session.user.id}
+      ORDER BY created_at DESC
+    `;
+
+    return NextResponse.json(rows, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[submissions] failed to load submission history', error);
     return new NextResponse('INTERNAL_ERROR', { status: 500 });
   }
 }

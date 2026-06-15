@@ -19,7 +19,7 @@ export function AuthShell({
         <img
           src="/sarvam/hero-gradient.svg"
           alt=""
-          className="h-auto w-full -translate-y-1/2 scale-150 object-cover"
+          className="h-auto w-full scale-150 -scale-y-100 object-cover"
         />
       </div>
 

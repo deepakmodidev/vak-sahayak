@@ -33,6 +33,7 @@ interface ViewControllerProps {
   formData: FormData;
   activeField: string | null;
   isSubmitted: boolean;
+  reference?: string | null;
   serviceType: string;
   externalError?: string | null;
   onServiceSelect: (id: string) => void;
@@ -43,6 +44,7 @@ export function ViewController({
   formData,
   activeField,
   isSubmitted,
+  reference,
   serviceType,
   externalError,
   onServiceSelect,
@@ -166,6 +168,7 @@ export function ViewController({
               data={formData}
               activeField={activeField}
               isSubmitted={isSubmitted}
+              reference={reference}
               serviceType={serviceType}
               onReset={() => window.location.reload()}
             />

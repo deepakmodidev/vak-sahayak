@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle2, FileText } from 'lucide-react';
 // eslint-disable-next-line import/named
 import { AnimatePresence, motion } from 'motion/react';
@@ -14,6 +14,7 @@ interface FormVisualizerProps {
   data: FormData;
   activeField?: string | null;
   isSubmitted: boolean;
+  reference?: string | null;
   serviceType: string;
   onReset: () => void;
 }
@@ -22,6 +23,7 @@ export function FormVisualizer({
   data,
   activeField,
   isSubmitted,
+  reference,
   serviceType = DEFAULT_SERVICE,
   onReset,
 }: FormVisualizerProps) {
@@ -67,16 +69,6 @@ export function FormVisualizer({
   const progress = fields.filter((f) => Boolean(f.value)).length;
   const total = fields.length;
   const percentage = total === 0 ? 0 : Math.round((progress / total) * 100);
-
-  // Per-submission reference number (regenerated when a new submission completes).
-  const referenceNumber = useMemo(
-    () =>
-      `VS-${Math.floor(1000 + Math.random() * 9000)}-${Math.random()
-        .toString(36)
-        .slice(2, 4)
-        .toUpperCase()}`,
-    [isSubmitted]
-  );
 
   return (
     <div className="bg-card border-primary relative mx-auto flex h-[600px] w-full max-w-xl flex-col overflow-hidden rounded-[2.5rem] border p-8 font-sans shadow-sm">
@@ -194,7 +186,14 @@ export function FormVisualizer({
                     Reference
                   </span>
                 </div>
-                <span className="font-mono text-sm font-bold">{referenceNumber}</span>
+                <span
+                  className={cn(
+                    'font-mono text-sm font-bold',
+                    !reference && 'text-muted-foreground font-medium'
+                  )}
+                >
+                  {reference ?? 'Generating…'}
+                </span>
               </div>
 
               <Button className="bg-primary hover:bg-primary/90 h-12 w-full rounded-xl text-base font-semibold text-white shadow-sm">
