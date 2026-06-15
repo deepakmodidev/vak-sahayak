@@ -83,7 +83,7 @@ export function FormVisualizer({
           >
             <div className="mb-8 flex shrink-0 items-center justify-between">
               <div>
-                <h2 className="text-foreground flex items-center gap-2 text-xl font-semibold tracking-tight">
+                <h2 className="text-foreground flex items-center gap-2 text-xl font-medium tracking-tight">
                   Tracker
                 </h2>
                 <p className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase">
@@ -91,7 +91,7 @@ export function FormVisualizer({
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-foreground text-2xl font-semibold tracking-tighter tabular-nums">
+                <div className="text-foreground text-2xl font-medium tracking-tighter tabular-nums">
                   {percentage}%
                 </div>
               </div>
@@ -182,7 +182,7 @@ export function FormVisualizer({
               <div className="bg-muted/50 border-primary/20 flex items-center justify-between rounded-2xl border p-4">
                 <div className="flex items-center gap-3">
                   <FileText className="text-primary" size={18} />
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
                     Reference
                   </span>
                 </div>
@@ -196,7 +196,7 @@ export function FormVisualizer({
                 </span>
               </div>
 
-              <Button className="bg-primary hover:bg-primary/90 h-12 w-full rounded-xl text-base font-semibold text-white shadow-sm">
+              <Button className="bg-primary hover:bg-primary/90 h-12 w-full rounded-xl text-base font-medium text-white shadow-sm">
                 Track Status
               </Button>
             </div>

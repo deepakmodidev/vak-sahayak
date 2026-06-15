@@ -38,7 +38,7 @@ function ChooserCard({ href, eyebrow, title, description, Icon }: ChooserCardPro
           </div>
         </div>
 
-        <div className="text-foreground group-hover:text-primary flex items-center gap-2 text-sm font-semibold tracking-wide transition-colors">
+        <div className="text-foreground group-hover:text-primary flex items-center gap-2 text-sm font-medium tracking-wide transition-colors">
           <span>Continue</span>
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </div>

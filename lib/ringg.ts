@@ -44,7 +44,7 @@ export interface InitiateCallArgs {
 }
 
 export interface InitiateCallResult {
-  callId: string;
+  callId: string | null;
   status?: string;
 }
 
@@ -97,16 +97,35 @@ export async function initiateCall({
     );
   }
 
-  const data = (await res.json().catch(() => ({}))) as {
+  // Ringg wraps the result under `data`:
+  //   { status, data: { call_id, call_status, ... }, message }
+  // We previously read `call_id` at the TOP level, so it was always undefined —
+  // every placed call looked like a failure and the UI got a 502 even though
+  // Ringg had already registered/started the call. Read `data.call_id`, but
+  // tolerate a flatter shape too in case Ringg changes it.
+  const json = (await res.json().catch(() => ({}))) as {
+    status?: string;
+    message?: string;
+    data?: { call_id?: string; call_status?: string };
     call_id?: string;
     call_status?: string;
   };
 
-  if (!data.call_id) {
-    throw new Error('RINGG_INITIATE_FAILED: response did not include a call_id.');
+  const callId = json.data?.call_id ?? json.call_id ?? null;
+  const status = json.data?.call_status ?? json.call_status;
+
+  // The HTTP response was 2xx, so Ringg accepted the call. Don't fail the whole
+  // flow just because we couldn't find an id — the webhook matches the row by
+  // submission_id (custom_args_values) and backfills ringg_call_id later. Log
+  // the raw body so a real shape change is visible in the server logs.
+  if (!callId) {
+    console.warn(
+      '[ringg] initiate returned 2xx but no call_id found in response:',
+      JSON.stringify(json)
+    );
   }
 
-  return { callId: data.call_id, status: data.call_status };
+  return { callId, status };
 }
 
 /**
@@ -131,7 +150,18 @@ export function extractFieldsFromWebhook(
 
   const schema = FORM_SCHEMAS[serviceType];
   if (!schema) return result;
-  const validIds = new Set(schema.fields.map((f) => f.id));
+  // Match Ringg's client_analysis keys onto our field ids tolerantly: Ringg may
+  // send keys as our id ("full_name"), as the human label ("Full Name"), or with
+  // different casing/spacing/punctuation. Normalise both sides to
+  // lowercase-alphanumeric before comparing so any of those shapes still map.
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const idByNorm = new Map<string, string>();
+  for (const f of schema.fields) {
+    idByNorm.set(norm(f.id), f.id);
+    idByNorm.set(norm(f.label), f.id);
+  }
+  const resolveId = (key: unknown): string | null =>
+    typeof key === 'string' ? (idByNorm.get(norm(key)) ?? null) : null;
 
   const p = (payload ?? {}) as Record<string, unknown>;
   let analysis: unknown = p.client_analysis;
@@ -158,17 +188,18 @@ export function extractFieldsFromWebhook(
     for (const item of analysis) {
       if (!item || typeof item !== 'object') continue;
       const entry = item as Record<string, unknown>;
-      const key = (entry.name ?? entry.key ?? entry.id) as unknown;
-      if (typeof key !== 'string' || !validIds.has(key)) continue;
+      const id = resolveId(entry.name ?? entry.key ?? entry.id);
+      if (!id) continue;
       const value = coerce(entry.value);
-      if (value !== null) result[key] = value;
+      if (value !== null) result[id] = value;
     }
   } else if (analysis && typeof analysis === 'object') {
     // Shape 1: object keyed directly by field id.
     for (const [key, value] of Object.entries(analysis as Record<string, unknown>)) {
-      if (!validIds.has(key)) continue;
+      const id = resolveId(key);
+      if (!id) continue;
       const coerced = coerce(value);
-      if (coerced !== null) result[key] = coerced;
+      if (coerced !== null) result[id] = coerced;
     }
   }
 

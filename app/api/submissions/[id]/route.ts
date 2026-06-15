@@ -25,7 +25,7 @@ export async function GET(
     const { id } = await params;
 
     const rows = await sql`
-      SELECT id, channel, service_type, status, reference, phone, fields, transcript, created_at
+      SELECT id, channel, service_type, status, call_status, reference, phone, fields, transcript, events, created_at
       FROM public.form_submissions
       WHERE id = ${id} AND user_id = ${session.user.id}
       LIMIT 1

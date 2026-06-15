@@ -22,7 +22,7 @@ function SubmitButton({ label }: { label: string }) {
       type="submit"
       size="lg"
       disabled={pending}
-      className="h-12 w-full rounded-full text-base font-semibold"
+      className="h-12 w-full rounded-full text-base font-medium"
     >
       {pending ? 'Please wait…' : label}
     </Button>
@@ -103,14 +103,14 @@ export function AuthForm({ mode, action }: AuthFormProps) {
         {isSignUp ? (
           <>
             Already have an account?{' '}
-            <Link href="/auth?mode=sign-in" className="text-primary font-semibold hover:underline">
+            <Link href="/auth?mode=sign-in" className="text-primary font-medium hover:underline">
               Sign in
             </Link>
           </>
         ) : (
           <>
             New to Vak Sahayak?{' '}
-            <Link href="/auth?mode=sign-up" className="text-primary font-semibold hover:underline">
+            <Link href="/auth?mode=sign-up" className="text-primary font-medium hover:underline">
               Create an account
             </Link>
           </>

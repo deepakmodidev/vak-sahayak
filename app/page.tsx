@@ -46,13 +46,13 @@ function MainHeader() {
         <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/portal"
-            className="rounded-full bg-[#111111] px-4 py-2 text-xs font-semibold whitespace-nowrap text-white transition-all hover:bg-black sm:px-6"
+            className="rounded-full bg-[#111111] px-4 py-2 text-xs font-medium whitespace-nowrap text-white transition-all hover:bg-black sm:px-6"
           >
             Launch Portal
           </Link>
           <Link
             href="/portal"
-            className="bg-secondary text-secondary-foreground border-border hover:bg-muted hidden rounded-full border px-6 py-2 text-xs font-semibold whitespace-nowrap transition-all sm:inline-flex"
+            className="bg-secondary text-secondary-foreground border-border hover:bg-muted hidden rounded-full border px-6 py-2 text-xs font-medium whitespace-nowrap transition-all sm:inline-flex"
           >
             Platform Help
           </Link>
@@ -94,13 +94,13 @@ function HeroSection() {
       <div className="flex flex-col items-center gap-4 sm:flex-row">
         <Link
           href="/portal"
-          className="rounded-full bg-[#111111] px-10 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-black"
+          className="rounded-full bg-[#111111] px-10 py-4 text-base font-medium text-white shadow-md transition-all hover:bg-black"
         >
           Launch Vak Sahayak
         </Link>
         <Link
           href="#impact"
-          className="text-foreground border-border hover:bg-secondary rounded-full border bg-white px-10 py-4 text-base font-semibold transition-all"
+          className="text-foreground border-border hover:bg-secondary rounded-full border bg-white px-10 py-4 text-base font-medium transition-all"
         >
           View Key Use Cases
         </Link>
@@ -144,7 +144,7 @@ function VisionSection() {
               citizen in all 22 scheduled regional languages.
             </p>
             <div className="flex items-center gap-6">
-              <span className="text-foreground text-sm font-semibold tracking-widest uppercase">
+              <span className="text-foreground text-sm font-medium tracking-widest uppercase">
                 Sovereign. Multilingual. Scale.
               </span>
             </div>
@@ -371,7 +371,7 @@ function LinguisticMosaic() {
       className="group hover:border-primary/40 flex cursor-default flex-col items-center justify-center gap-2 rounded-2xl border border-black/[0.06] bg-white/60 px-2 py-4 text-center backdrop-blur-sm transition-all duration-300 hover:bg-white"
     >
       <span className="text-foreground text-xl leading-none font-medium">{lang.script}</span>
-      <span className="text-muted-foreground/60 group-hover:text-primary text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors">
+      <span className="text-muted-foreground/60 group-hover:text-primary text-[10px] font-medium tracking-[0.16em] uppercase transition-colors">
         {lang.name}
       </span>
     </div>
@@ -439,7 +439,7 @@ function CTASection() {
             </p>
             <Link
               href="/portal"
-              className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-sm sm:text-lg font-semibold text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110"
+              className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-sm sm:text-lg font-medium text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110"
             >
               Get Started Now
             </Link>

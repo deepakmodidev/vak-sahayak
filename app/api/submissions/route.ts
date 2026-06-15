@@ -73,7 +73,7 @@ export async function GET() {
     }
 
     const rows = await sql`
-      SELECT id, channel, service_type, status, reference, fields, created_at
+      SELECT id, channel, service_type, status, call_status, reference, fields, events, created_at
       FROM public.form_submissions
       WHERE user_id = ${session.user.id}
       ORDER BY created_at DESC

@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, FileText, LogOut, Phone } from 'lucide-react';
+import { CheckCircle2, FileText, LogOut, Mic, Phone } from 'lucide-react';
 // eslint-disable-next-line import/named
 import { motion } from 'motion/react';
 import { authClient } from '@/lib/auth/client';
+import { RinggEvents } from '@/components/app/ringg-events';
 import { FORM_SCHEMAS } from '@/lib/form-schemas';
-import { cn } from '@/lib/shadcn/utils';
+import { isTerminalStatus, type RinggEvent } from '@/lib/call-status';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -28,9 +29,11 @@ interface Submission {
   id: string;
   channel: string;
   service_type: string;
-  status: string;
+  status: string; // internal control status
+  call_status: string | null; // RAW status straight from Ringg
   reference: string | null;
   fields: Record<string, unknown> | null;
+  events: RinggEvent[] | null; // RAW events straight from Ringg
   created_at: string;
 }
 
@@ -46,36 +49,30 @@ function formatDate(value: string): string {
   return date.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function statusLabel(status: string): string {
-  if (!status) return 'Submitted';
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
+/** Shows the raw status string verbatim; a tick + tint for completed. */
 function StatusBadge({ status }: { status: string }) {
   const isCompleted = status?.toLowerCase() === 'completed';
   return (
     <Badge
       variant="secondary"
-      className={cn(
-        'gap-1.5 px-3 py-1 text-xs font-semibold tracking-wide',
-        isCompleted
-          ? 'bg-primary/10 text-primary'
-          : 'bg-muted text-muted-foreground'
-      )}
+      className={`gap-1.5 px-3 py-1 font-mono text-xs tracking-wide ${isCompleted ? 'bg-primary/10 text-primary' : 'bg-muted text-foreground'
+        }`}
     >
       {isCompleted && <CheckCircle2 size={13} strokeWidth={2.5} />}
-      {statusLabel(status)}
+      {status || '—'}
     </Badge>
   );
 }
 
 function ChannelLabel({ channel }: { channel: string }) {
+  // Voice = in-browser mic; call = phone. Matches the portal's voice/call icons.
+  const Icon = channel === 'call' ? Phone : Mic;
   return (
     <Badge
       variant="outline"
       className="text-muted-foreground gap-1 border-transparent px-0 text-xs font-medium tracking-[0.15em] uppercase"
     >
-      <Phone size={12} strokeWidth={2.5} />
+      <Icon size={12} strokeWidth={2.5} />
       {channel || 'voice'}
     </Badge>
   );
@@ -88,17 +85,17 @@ function SubmissionDetails({ submission }: { submission: Submission }) {
 
   const rows = schema
     ? schema.fields.map((field) => ({
-        key: field.id,
-        label: field.label,
-        Icon: field.icon,
-        value: fields[field.id],
-      }))
+      key: field.id,
+      label: field.label,
+      Icon: field.icon,
+      value: fields[field.id],
+    }))
     : Object.entries(fields).map(([key, value]) => ({
-        key,
-        label: key,
-        Icon: FileText as React.ElementType,
-        value,
-      }));
+      key,
+      label: key,
+      Icon: FileText as React.ElementType,
+      value,
+    }));
 
   return (
     <div className="space-y-3">
@@ -136,27 +133,44 @@ export function SubmissionsHistory() {
 
   useEffect(() => {
     let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const startedAt = Date.now();
+    const MAX_REFRESH_MS = 5 * 60 * 1000; // stop auto-refreshing after ~5 min
 
-    (async () => {
+    const load = async () => {
       try {
         const res = await fetch('/api/submissions', {
           method: 'GET',
           credentials: 'same-origin',
+          cache: 'no-store',
         });
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const data = (await res.json()) as Submission[];
         if (!active) return;
-        setSubmissions(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setSubmissions(list);
         setState('ready');
+        // Keep refreshing while any call is still in progress so the card
+        // reflects ringing → on call → processing → completed live.
+        if (
+          list.some((s) => !isTerminalStatus(s.status)) &&
+          Date.now() - startedAt < MAX_REFRESH_MS
+        ) {
+          timer = setTimeout(load, 4000);
+        }
       } catch (error) {
         console.error('[submissions-history] failed to load', error);
         if (!active) return;
-        setState('error');
+        // Only show the error state on first load; keep last good data after.
+        setState((prev) => (prev === 'ready' ? prev : 'error'));
       }
-    })();
+    };
+
+    load();
 
     return () => {
       active = false;
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
@@ -225,14 +239,14 @@ export function SubmissionsHistory() {
                   <CardTitle className="text-foreground font-serif text-xl leading-snug font-normal tracking-[-0.01em]">
                     {serviceTitle(submission.service_type)}
                   </CardTitle>
-                  <StatusBadge status={submission.status} />
+                  <StatusBadge status={submission.call_status ?? submission.status} />
                 </div>
               </CardHeader>
 
               <CardContent className="px-6">
                 <div className="bg-muted/60 border-border flex items-center gap-2 rounded-2xl border px-4 py-3">
                   <FileText className="text-primary shrink-0" size={15} />
-                  <span className="text-foreground truncate font-mono text-sm font-semibold tracking-tight">
+                  <span className="text-foreground truncate font-mono text-sm font-medium tracking-tight">
                     {submission.reference ?? '—'}
                   </span>
                 </div>
@@ -270,41 +284,47 @@ export function SubmissionsHistory() {
               </DialogHeader>
 
               <div className="-mr-2 flex-1 overflow-y-auto pr-2">
-              <div className="bg-muted/60 border-border mb-6 space-y-3 rounded-2xl border p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                    Reference
-                  </span>
-                  <span className="text-foreground font-mono text-sm font-bold">
-                    {selected.reference ?? '—'}
-                  </span>
+                <div className="bg-muted/60 border-border mb-6 space-y-3 rounded-2xl border p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                      Reference
+                    </span>
+                    <span className="text-foreground font-mono text-sm">
+                      {selected.reference ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                      Status
+                    </span>
+                    <StatusBadge status={selected.call_status ?? selected.status} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                      Channel
+                    </span>
+                    <ChannelLabel channel={selected.channel} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                      Submitted
+                    </span>
+                    <span className="text-foreground text-sm font-medium">
+                      {formatDate(selected.created_at)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                    Status
-                  </span>
-                  <StatusBadge status={selected.status} />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                    Channel
-                  </span>
-                  <ChannelLabel channel={selected.channel} />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                    Submitted
-                  </span>
-                  <span className="text-foreground text-sm font-medium">
-                    {formatDate(selected.created_at)}
-                  </span>
-                </div>
-              </div>
 
-              <span className="text-muted-foreground mb-3 block text-xs font-medium tracking-[0.2em] uppercase">
-                Details
-              </span>
-              <SubmissionDetails submission={selected} />
+                <span className="text-muted-foreground mb-3 block text-xs font-medium tracking-[0.2em] uppercase">
+                  Details
+                </span>
+                <SubmissionDetails submission={selected} />
+
+                {selected.channel === 'call' && (
+                  <div className="mt-6">
+                    <RinggEvents events={selected.events} />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -341,7 +361,7 @@ function SectionHeader({ title, userName }: { title: string; userName: string })
 
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground inline-flex items-center gap-2 text-sm font-medium">
-          <span className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+          <span className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-medium">
             {initial}
           </span>
           <span className="max-w-[12rem] truncate">{userName}</span>

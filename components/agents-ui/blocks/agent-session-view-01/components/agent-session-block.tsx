@@ -237,7 +237,7 @@ export function AgentSessionView_01({
                 duration={2}
                 aria-hidden={messages.length > 0}
                 {...SHIMMER_MOTION_PROPS}
-                className="pointer-events-none mx-auto block w-full max-w-2xl pb-4 text-center text-sm font-semibold"
+                className="pointer-events-none mx-auto block w-full max-w-2xl pb-4 text-center text-sm font-medium"
               >
                 {preConnectMessage}
               </MotionMessage>

@@ -70,16 +70,18 @@ export async function POST(req: Request) {
     const submissionId = rows[0]?.id as string;
 
     try {
-      const { callId } = await initiateCall({
+      const { callId, status: callStatus } = await initiateCall({
         name: name || 'Citizen',
         phone,
         serviceType,
         submissionId,
       });
 
+      // `call_status` stores Ringg's raw status verbatim (e.g. 'ongoing');
+      // `status` stays our internal control value.
       await sql`
         UPDATE public.form_submissions
-        SET status = 'calling', ringg_call_id = ${callId}
+        SET status = 'calling', ringg_call_id = ${callId}, call_status = ${callStatus ?? null}
         WHERE id = ${submissionId}
       `;
 

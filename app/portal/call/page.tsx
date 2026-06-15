@@ -85,8 +85,8 @@ export default function CallRequestPage() {
   };
 
   return (
-    <div className="bg-background flex min-h-screen flex-col items-center justify-center px-6 py-16 font-sans">
-      <div className="w-full max-w-xl">
+    <div className="bg-background flex min-h-screen flex-col px-6 py-12 font-sans">
+      <div className="mx-auto w-full max-w-6xl">
         <Link
           href="/portal"
           className="text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-2 text-sm font-medium transition-colors"
@@ -95,138 +95,158 @@ export default function CallRequestPage() {
           Back
         </Link>
 
-        <Card className="border-primary gap-10 rounded-[2.5rem] p-10 shadow-sm">
-          <header className="space-y-3">
-            <span className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase">
-              Phone Call
-            </span>
-            <h1 className="text-foreground font-serif text-4xl font-normal tracking-[-0.02em]">
-              Fill by phone call
-            </h1>
-            <p className="text-muted-foreground text-base leading-relaxed font-light">
-              Pick a service and enter your number — we&apos;ll call you and fill the form together.
-            </p>
-          </header>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Service picker */}
-            <div className="space-y-4">
-              <span className="text-foreground text-xs font-medium tracking-[0.2em] uppercase">
-                Select Service
-              </span>
-              <div className="grid grid-cols-1 gap-3">
-                {SERVICES.map((service) => (
-                  <button
-                    key={service.id}
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => setSelectedService(service.id)}
-                    className={cn(
-                      'group flex items-center justify-between rounded-2xl border p-5 text-left transition-all duration-300',
-                      selectedService === service.id
-                        ? 'bg-primary text-primary-foreground border-primary scale-[1.01]'
-                        : 'bg-card border-border hover:border-primary hover:bg-muted',
-                      submitting && 'cursor-not-allowed opacity-50'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'text-base font-medium transition-colors',
-                        selectedService === service.id
-                          ? 'text-primary-foreground'
-                          : 'text-foreground'
-                      )}
-                    >
-                      {service.title}
-                    </span>
-                    <span
-                      className={cn(
-                        'h-2.5 w-2.5 rounded-full transition-all duration-300',
-                        selectedService === service.id ? 'bg-primary-foreground' : 'bg-muted'
-                      )}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Inputs */}
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-foreground">
-                  Your name <span className="text-muted-foreground font-normal">(optional)</span>
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Priya Sharma"
-                  disabled={submitting}
-                  className="h-12 rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-foreground">
-                  Phone number
-                </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+9198XXXXXXXX"
-                  required
-                  disabled={submitting}
-                  aria-invalid={Boolean(error)}
-                  className="h-12 rounded-xl"
-                />
-                <p className="text-muted-foreground text-xs">
-                  International format with country code, e.g. +9198XXXXXXXX.
+        <section className="text-foreground grid grid-cols-1 items-center gap-16 lg:min-h-[70vh] lg:grid-cols-2 lg:gap-24">
+          {/* Left Side: Branding */}
+          <div className="flex flex-col items-start gap-12 py-8 text-left">
+            <div className="space-y-8">
+              <img src="/vak-sahayak.png" alt="Vak Sahayak Logo" className="h-auto w-24" />
+              <div>
+                <span className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase">
+                  Phone Call
+                </span>
+                <h1 className="text-foreground mt-4 mb-6 font-serif text-5xl leading-[0.95] font-normal tracking-[-0.03em] md:text-6xl">
+                  Fill by <span className="text-primary/60">phone call</span>
+                </h1>
+                <p className="text-muted-foreground max-w-md text-xl leading-relaxed font-light">
+                  Pick a service and enter your number — we&apos;ll call you and fill the form
+                  together.
                 </p>
               </div>
             </div>
 
-            {notConfigured && (
-              <div className="bg-muted text-foreground border-border rounded-2xl border p-4 text-sm font-medium">
-                Phone calling isn&apos;t enabled yet — set up Ringg to use this. You can still fill
-                your form{' '}
-                <Link href="/portal/voice" className="text-primary underline underline-offset-4">
-                  by voice
-                </Link>
-                .
+            {/* Powered by Ringg AI */}
+            <div>
+              <div className="flex flex-col gap-6">
+                <span className="text-foreground text-xl font-medium tracking-widest uppercase">
+                  Powered by
+                </span>
+                <img src="/ringg/ringg-logo.svg" alt="Ringg AI" className="h-8 w-auto" />
               </div>
-            )}
+            </div>
+          </div>
 
-            {error && (
-              <div className="bg-destructive/10 text-destructive rounded-2xl p-4 text-sm font-medium">
-                {error}
+          {/* Right Side: Interaction */}
+          <Card className="bg-card border-primary flex flex-col gap-10 rounded-[3rem] border p-10 shadow-sm">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Service picker */}
+              <div className="space-y-4">
+                <span className="text-foreground text-xs font-medium tracking-[0.2em] uppercase">
+                  Select Service
+                </span>
+                <div className="grid grid-cols-1 gap-3">
+                  {SERVICES.map((service) => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => setSelectedService(service.id)}
+                      className={cn(
+                        'group flex items-center justify-between rounded-2xl border p-5 text-left transition-all duration-300',
+                        selectedService === service.id
+                          ? 'bg-primary text-primary-foreground border-primary scale-[1.01]'
+                          : 'bg-card border-border hover:border-primary hover:bg-muted',
+                        submitting && 'cursor-not-allowed opacity-50'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'text-base font-medium transition-colors',
+                          selectedService === service.id
+                            ? 'text-primary-foreground'
+                            : 'text-foreground'
+                        )}
+                      >
+                        {service.title}
+                      </span>
+                      <span
+                        className={cn(
+                          'h-2.5 w-2.5 rounded-full transition-all duration-300',
+                          selectedService === service.id ? 'bg-primary-foreground' : 'bg-muted'
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              size="lg"
-              disabled={submitting}
-              className="h-14 w-full rounded-full text-lg font-semibold shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Calling you…
-                </>
-              ) : (
-                <>
-                  <Phone className="h-5 w-5" />
-                  Call me
-                </>
+              {/* Inputs */}
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-foreground">
+                    Your name <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Priya Sharma"
+                    disabled={submitting}
+                    className="h-12 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-foreground">
+                    Phone number
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+9198XXXXXXXX"
+                    required
+                    disabled={submitting}
+                    aria-invalid={Boolean(error)}
+                    className="h-12 rounded-xl"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    International format with country code, e.g. +9198XXXXXXXX.
+                  </p>
+                </div>
+              </div>
+
+              {notConfigured && (
+                <div className="bg-muted text-foreground border-border rounded-2xl border p-4 text-sm font-medium">
+                  Phone calling isn&apos;t enabled yet — set up Ringg to use this. You can still fill
+                  your form{' '}
+                  <Link href="/portal/voice" className="text-primary underline underline-offset-4">
+                    by voice
+                  </Link>
+                  .
+                </div>
               )}
-            </Button>
-          </form>
-        </Card>
+
+              {error && (
+                <div className="bg-destructive/10 text-destructive rounded-2xl p-4 text-sm font-medium">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                size="lg"
+                disabled={submitting}
+                className="h-14 w-full rounded-full text-lg font-medium shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Calling you…
+                  </>
+                ) : (
+                  <>
+                    <Phone className="h-5 w-5" />
+                    Call me
+                  </>
+                )}
+              </Button>
+            </form>
+          </Card>
+        </section>
       </div>
     </div>
   );

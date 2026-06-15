@@ -1,6 +1,7 @@
 import React from 'react';
+import Link from 'next/link';
 import type { AppConfig } from '@/app-config';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
 
@@ -44,11 +45,19 @@ export const WelcomeView = ({
   return (
     <div
       className={cn(
-        'bg-background flex min-h-[85vh] flex-col justify-center px-6 py-12 font-sans',
+        'bg-background flex min-h-[85vh] flex-col px-6 py-12 font-sans',
         className
       )}
     >
-      <section className="text-foreground mx-auto grid min-h-[70vh] w-full max-w-6xl grid-cols-1 items-center gap-24 lg:grid-cols-2">
+      <div className="mx-auto w-full max-w-6xl">
+        <Link
+          href="/portal"
+          className="text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-2 text-sm font-medium transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Link>
+        <section className="text-foreground grid min-h-[70vh] grid-cols-1 items-center gap-24 lg:grid-cols-2">
         {/* Left Side: Branding */}
         <div className="flex h-full flex-col items-start justify-between py-8 text-left">
           <div className="space-y-10">
@@ -142,7 +151,7 @@ export const WelcomeView = ({
               disabled={isConnecting}
               onClick={handleStart}
               className={cn(
-                'group relative z-10 h-16 w-full rounded-[1.5rem] border-none text-xl font-semibold shadow-sm transition-all active:scale-[0.99]',
+                'group relative z-10 h-16 w-full rounded-[1.5rem] border-none text-xl font-medium shadow-sm transition-all active:scale-[0.99]',
                 isConnecting
                   ? 'bg-muted text-muted-foreground'
                   : 'bg-primary text-primary-foreground hover:bg-primary/95 hover:scale-[1.01]'
@@ -166,6 +175,7 @@ export const WelcomeView = ({
           )}
         </div>
       </section>
+      </div>
     </div>
   );
 };

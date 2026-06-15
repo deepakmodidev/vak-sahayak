@@ -129,7 +129,7 @@ export function ViewController({
             <div className="flex items-center gap-3">
               <img src="/vak-sahayak.png" alt="Vak Sahayak" className="h-12 w-12 object-contain" />
               <div>
-                <h2 className="text-foreground text-xl leading-none font-semibold tracking-tight">
+                <h2 className="text-foreground text-xl leading-none font-medium tracking-tight">
                   Vak Sahayak
                 </h2>
                 <p className="text-muted-foreground mt-1.5 text-xs font-medium tracking-[0.2em] uppercase">
