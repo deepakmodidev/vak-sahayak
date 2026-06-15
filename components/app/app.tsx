@@ -37,6 +37,13 @@ interface AppProps {
 
 export function App({ appConfig }: AppProps) {
   const [formData, setFormData] = useState<FormData>({});
+  // Mirror formData into a ref so the (room-scoped) data handler always reads the
+  // latest accumulated answers when persisting on submit, without re-binding the
+  // effect on every keystroke.
+  const formDataRef = useRef(formData);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
   const [activeField, setActiveField] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [serviceType, setServiceType] = useState('aadhaar');
@@ -129,6 +136,16 @@ export function App({ appConfig }: AppProps) {
           break;
         }
         case 'form_submitted': {
+          // Fire-and-forget: persist the submission for the user's history.
+          // Non-blocking and must never break the existing UX if it fails.
+          fetch('/api/submissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              serviceType: serviceTypeRef.current,
+              formData: formDataRef.current,
+            }),
+          }).catch(() => {});
           setIsSubmitted(true);
           toast.success('Government form submitted successfully!');
           break;
