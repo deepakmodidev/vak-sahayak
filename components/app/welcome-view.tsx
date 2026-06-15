@@ -2,7 +2,6 @@ import React from 'react';
 import type { AppConfig } from '@/app-config';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SubmissionsHistory } from '@/components/app/submissions-history';
 import { cn } from '@/lib/shadcn/utils';
 
 function WelcomeIcon() {
@@ -45,7 +44,7 @@ export const WelcomeView = ({
   return (
     <div
       className={cn(
-        'bg-background flex min-h-[85vh] flex-col px-6 py-12 font-sans',
+        'bg-background flex min-h-[85vh] flex-col justify-center px-6 py-12 font-sans',
         className
       )}
     >
@@ -167,10 +166,6 @@ export const WelcomeView = ({
           )}
         </div>
       </section>
-
-      <div className="border-border mx-auto mt-20 w-full max-w-6xl border-t pt-16">
-        <SubmissionsHistory />
-      </div>
     </div>
   );
 };
