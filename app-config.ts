@@ -35,7 +35,7 @@ export interface AppConfig {
 export const APP_CONFIG_DEFAULTS: AppConfig = {
   companyName: 'Vak Sahayak',
   pageTitle: 'Vak Sahayak - Voice-First Indian Government Form Filling',
-  pageDescription: 'Fill any Indian government form just by speaking in your own language.',
+  pageDescription: 'Fill any Indian government form just by speaking in your browser or over a phone call, in your own language.',
 
   supportsChatInput: true,
   supportsVideoInput: false, // Disabled for pure Voice Portal

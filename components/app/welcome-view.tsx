@@ -33,9 +33,9 @@ export const WelcomeView = ({
   const [selectedService, setSelectedService] = React.useState('aadhaar');
 
   const services = [
-    { id: 'aadhaar', name: 'Aadhaar', description: 'Address/Name' },
-    { id: 'pan', name: 'PAN Card', description: 'New/Correction' },
-    { id: 'ration', name: 'Ration Card', description: 'Member Update' },
+    { id: 'aadhaar', name: 'Aadhaar', description: 'New Application' },
+    { id: 'pan', name: 'PAN Card', description: 'New Application' },
+    { id: 'ration', name: 'Ration Card', description: 'New Application' },
   ];
 
   const handleStart = () => {

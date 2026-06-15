@@ -1,5 +1,16 @@
 import Link from 'next/link';
-import { ArrowRight, Brain, CheckCircle, Ear, Mic, Volume2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Brain,
+  CheckCircle,
+  Ear,
+  Languages,
+  Mic,
+  Phone,
+  PhoneOff,
+  Users,
+  Volume2,
+} from 'lucide-react';
 
 /**
  * PRODUCTION-GRADE MODULAR PITCH DECK
@@ -36,8 +47,8 @@ function MainHeader() {
           <Link href="/portal" className="hover:text-primary transition-colors">
             Portal
           </Link>
-          <Link href="#technology" className="hover:text-primary transition-colors">
-            Solution
+          <Link href="#features" className="hover:text-primary transition-colors">
+            How It Works
           </Link>
           <Link href="#impact" className="hover:text-primary transition-colors">
             Impact
@@ -88,7 +99,7 @@ function HeroSection() {
       <p className="text-muted-foreground mb-12 max-w-4xl text-center text-lg leading-relaxed font-medium md:text-xl">
         Simplified public services through natural conversation.
         <br />
-        Filling government forms is now as simple as speaking.
+        Fill government forms by talking in your browser - or get a call back on any phone.
       </p>
 
       <div className="flex flex-col items-center gap-4 sm:flex-row">
@@ -99,25 +110,20 @@ function HeroSection() {
           Launch Vak Sahayak
         </Link>
         <Link
-          href="#impact"
+          href="#features"
           className="text-foreground border-border hover:bg-secondary rounded-full border bg-white px-10 py-4 text-base font-medium transition-all"
         >
-          View Key Use Cases
+          See How It Works
         </Link>
       </div>
 
       <div className="w-full pt-20">
         <p className="text-muted-foreground mb-10 text-xs font-bold tracking-[0.3em] uppercase">
-          Integration Tech Stack
+          Powered By Indian AI Companies
         </p>
         <div className="flex scale-90 flex-wrap items-center justify-center gap-x-16 gap-y-8 opacity-50 contrast-125 grayscale">
-          <div className="text-3xl font-bold tracking-widest">LiveKit</div>
-          <img
-            src="/sarvam/sarvam-wordmark-black.svg"
-            className="h-5"
-            alt="Sarvam AI"
-          />
-          <div className="text-3xl font-bold tracking-widest">Groq</div>
+          <img src="/sarvam/sarvam-wordmark-black.svg" className="h-5" />
+          <img src="/ringg/ringg-logo.svg" className="h-8" alt="Ringg AI" />
         </div>
       </div>
     </section>
@@ -133,7 +139,7 @@ function VisionSection() {
         <div className="flex flex-col items-center gap-20 lg:flex-row">
           <div className="lg:w-1/2">
             <div className="text-primary mb-12 text-xs font-bold tracking-[0.3em] uppercase">
-              01 / 04 — The Vision
+              01 / 07 - The Vision
             </div>
             <h2 className="mb-8 font-serif text-4xl leading-tight md:text-5xl">
               Bridging the language gap for the next billion.
@@ -162,6 +168,280 @@ function VisionSection() {
   );
 }
 
+// --- VOICE FEATURE (powered by Sarvam) ---
+
+function VoiceFeatureSection() {
+  return (
+    <section id="features" className="border-border w-full overflow-hidden border-t bg-white py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
+          <div className="lg:w-1/2">
+            <div className="text-primary mb-6 text-xs font-bold tracking-[0.3em] uppercase">
+              02 / 07 - Talk to Fill
+            </div>
+            <h2 className="mb-8 font-serif text-4xl leading-tight md:text-5xl">
+              Speak, and watch the form fill itself.
+            </h2>
+            <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
+              Open Vak Sahayak in your browser and just talk - in your own language. Every field
+              fills on screen as you speak.
+            </p>
+            <ul className="mb-12 flex flex-col gap-4">
+              {[
+                'Fields fill in live on screen as you speak',
+                'A natural, back-and-forth conversation in your language',
+                'Saaras STT + Bulbul TTS for human-like Indian voices',
+              ].map((point, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <CheckCircle className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+                  <span className="text-foreground text-base leading-relaxed">{point}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.2em] uppercase">
+                Powered by
+              </span>
+              <span className="flex items-center gap-2">
+                <img src="/sarvam/sarvam-icon.svg" alt="" className="h-5 w-auto" />
+                <img src="/sarvam/sarvam-wordmark-black.svg" alt="Sarvam AI" className="h-4 w-auto" />
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-1/2">
+            <div className="relative">
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    @keyframes vs-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+                    .vs-bar { transform-origin: center; animation: vs-eq 1.1s ease-in-out infinite; }
+                  `,
+                }}
+              />
+              <div className="bg-primary/5 absolute inset-0 scale-110 rounded-[3rem] blur-3xl"></div>
+              <div className="border-border relative rounded-3xl border bg-white p-8 shadow-sm">
+                <div className="border-border mb-6 flex items-center gap-3 border-b pb-6">
+                  <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-full">
+                    <Mic className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-foreground text-sm font-medium">Aadhaar Application</div>
+                    <div className="text-muted-foreground text-xs">Listening - speak naturally…</div>
+                  </div>
+                  <div className="flex h-6 items-center gap-[3px]">
+                    {[0, 1, 2, 3, 4, 5, 6].map((bar) => (
+                      <span
+                        key={bar}
+                        className="vs-bar bg-primary/70 inline-block w-1 rounded-full"
+                        style={{ height: '100%', animationDelay: `${bar * 0.13}s` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { label: 'Full Name', value: 'Priya Sharma', done: true },
+                    { label: 'Date of Birth', value: '14 / 08 / 1996', done: true },
+                    { label: 'Address', value: 'filling…', done: false },
+                  ].map((field, i) => (
+                    <div
+                      key={i}
+                      className="border-border flex items-center justify-between rounded-2xl border bg-white px-5 py-4"
+                    >
+                      <div>
+                        <div className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+                          {field.label}
+                        </div>
+                        <div className="text-foreground mt-1 text-sm font-medium">
+                          {field.value}
+                          {!field.done && (
+                            <span className="bg-primary ml-0.5 inline-block h-4 w-0.5 animate-pulse align-middle" />
+                          )}
+                        </div>
+                      </div>
+                      {field.done && <CheckCircle className="text-primary h-5 w-5" />}
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  href="/portal/voice"
+                  className="group mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#111111] px-6 py-4 text-sm font-medium text-white transition-all hover:bg-black"
+                >
+                  <Mic className="h-4 w-4" />
+                  Try Voice
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// --- CALL FEATURE (powered by Ringg) ---
+
+function CallFeatureSection() {
+  return (
+    <section id="call" className="border-border w-full overflow-hidden border-t bg-[#fafafa] py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="flex flex-col items-center gap-16 lg:flex-row-reverse lg:gap-24">
+          <div className="lg:w-1/2">
+            <div className="text-primary mb-6 text-xs font-bold tracking-[0.3em] uppercase">
+              03 / 07 - Call to Fill
+            </div>
+            <h2 className="mb-8 font-serif text-4xl leading-tight md:text-5xl">
+              We&apos;ll call you and fill the form together.
+            </h2>
+            <p className="text-muted-foreground mb-10 text-lg leading-relaxed">
+              Enter your number and Vak Sahayak calls you back, filling your form as you answer - no
+              app, no screen needed.
+            </p>
+            <ul className="mb-12 flex flex-col gap-4">
+              {[
+                'Works on any phone - even a basic feature phone',
+                'No app, no screen, no internet needed on your side',
+                'An AI voice agent handles the entire call end-to-end',
+              ].map((point, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <CheckCircle className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+                  <span className="text-foreground text-base leading-relaxed">{point}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.2em] uppercase">
+                Powered by
+              </span>
+              <img src="/ringg/ringg-logo.svg" alt="Ringg AI" className="h-5 w-auto" />
+            </div>
+          </div>
+
+          <div className="w-full lg:w-1/2">
+            <div className="relative">
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    @keyframes vs-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+                    .vs-bar { transform-origin: center; animation: vs-eq 1.1s ease-in-out infinite; }
+                  `,
+                }}
+              />
+              <div className="bg-primary/5 absolute inset-0 scale-110 rounded-[3rem] blur-3xl"></div>
+              <div className="border-border relative rounded-3xl border bg-white p-8 shadow-sm">
+                <div className="flex flex-col items-center text-center">
+                  <div className="bg-primary/10 text-primary mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                    <Phone className="h-7 w-7" />
+                  </div>
+                  <div className="text-foreground text-base font-medium">Vak Sahayak</div>
+                  <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                    On call · Ration Card · 01:24
+                  </div>
+                  <div className="mt-6 flex h-8 items-center justify-center gap-[3px]">
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((bar) => (
+                      <span
+                        key={bar}
+                        className="vs-bar bg-primary/70 inline-block w-1 rounded-full"
+                        style={{ height: '100%', animationDelay: `${bar * 0.1}s` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-8 flex items-center justify-center gap-5">
+                  <div className="border-border text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full border bg-white">
+                    <Mic className="h-5 w-5" />
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500 text-white shadow-md">
+                    <PhoneOff className="h-6 w-6" />
+                  </div>
+                  <div className="border-border text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full border bg-white">
+                    <Volume2 className="h-5 w-5" />
+                  </div>
+                </div>
+                <Link
+                  href="/portal/call"
+                  className="group mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#111111] px-6 py-4 text-sm font-medium text-white transition-all hover:bg-black"
+                >
+                  <Phone className="h-4 w-4" />
+                  Get a Call
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// --- WHO IT'S FOR ---
+
+function WhoItsForSection() {
+  const audiences = [
+    {
+      Icon: Phone,
+      barrier: 'No smartphone or internet',
+      answer: 'We call any basic phone. Nothing to install.',
+    },
+    {
+      Icon: Mic,
+      barrier: "Can't read the form",
+      answer: 'Just speak. It asks, you answer.',
+    },
+    {
+      Icon: Languages,
+      barrier: 'Form is in the wrong language',
+      answer: 'Use your own Indian language.',
+    },
+    {
+      Icon: Users,
+      barrier: 'Helping others fill forms',
+      answer: 'Faster intake at kiosks, NGOs and camps.',
+    },
+  ];
+
+  return (
+    <section id="who" className="border-border w-full border-t bg-white py-32">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-20 text-center">
+          <div className="text-primary mb-12 text-xs font-bold tracking-[0.3em] uppercase">
+            04 / 07 - Who It&apos;s For
+          </div>
+          <h2 className="mx-auto mb-8 max-w-3xl font-serif text-4xl leading-tight md:text-5xl">
+            Built for the people forms leave behind.
+          </h2>
+          <p className="text-muted-foreground mx-auto max-w-2xl text-lg leading-relaxed">
+            If you can&apos;t type, can&apos;t read the form, don&apos;t speak its language, or
+            don&apos;t own a smartphone, Vak Sahayak is for you.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {audiences.map((a, i) => (
+            <div
+              key={i}
+              className="border-border hover:border-primary flex flex-col gap-6 rounded-3xl border bg-white p-8 transition-all duration-300 hover:shadow-md"
+            >
+              <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-2xl">
+                <a.Icon className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-2 text-[10px] font-bold tracking-[0.16em] uppercase">
+                  {a.barrier}
+                </div>
+                <h3 className="text-foreground font-serif text-xl leading-snug">{a.answer}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // --- 5. SLIDE 02: TECHNOLOGY PIPELINE ---
 
 function TechnologyPipeline() {
@@ -177,7 +457,7 @@ function TechnologyPipeline() {
       <div className="relative z-10 mx-auto max-w-6xl px-6">
         <div className="mb-24 flex flex-col items-center text-center">
           <div className="text-primary mb-12 text-xs font-bold tracking-[0.3em] uppercase">
-            02 / 04 — Technology
+            05 / 07 - Technology
           </div>
           <h2 className="mb-8 font-serif text-4xl leading-tight md:text-5xl">
             The Vak Sahayak Intelligence Pipeline.
@@ -270,18 +550,22 @@ function ImpactSection() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-24 text-center">
           <div className="text-primary mb-6 text-center text-xs font-bold tracking-[0.3em] uppercase">
-            03 / 04 — Impact
+            06 / 07 - Impact
           </div>
           <h2 className="mx-auto mb-8 max-w-3xl text-center font-serif text-4xl leading-tight md:text-5xl">
             Transforming public service delivery at every level.
           </h2>
+          <p className="text-muted-foreground mx-auto mt-8 max-w-2xl text-center text-lg leading-relaxed">
+            Every service can be completed two ways - talk it through in your browser, or get a call
+            back on any phone.
+          </p>
         </div>
 
         <div className="mb-20 grid grid-cols-1 gap-8 md:grid-cols-3">
           {[
             {
               title: 'Aadhaar Registration',
-              desc: 'Helping citizens update their biometrics and demographic details via simple voice commands.',
+              desc: 'Helping citizens register their biometric and demographic details via simple voice commands.',
               color: 'bg-blue-50/80',
             },
             {
@@ -323,8 +607,13 @@ function ImpactSection() {
                 <h3 className="mb-4 font-serif text-2xl leading-tight">{item.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
-              <div className="hover:text-primary mt-12 flex cursor-pointer items-center gap-3 text-xs font-bold tracking-[0.2em] uppercase transition-all hover:translate-x-1">
-                Solution Details <ArrowRight className="h-4 w-4" />
+              <div className="mt-12 flex items-center gap-2">
+                <span className="text-foreground/70 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] uppercase">
+                  <Mic className="h-3 w-3" /> Voice
+                </span>
+                <span className="text-foreground/70 inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] uppercase">
+                  <Phone className="h-3 w-3" /> Call
+                </span>
               </div>
             </div>
           ))}
@@ -382,7 +671,7 @@ function LinguisticMosaic() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="mb-24 flex flex-col items-center text-center">
           <div className="text-primary mb-12 text-xs font-bold tracking-[0.3em] uppercase">
-            04 / 04 — Languages
+            07 / 07 - Languages
           </div>
           <h2 className="mb-8 font-serif text-4xl leading-tight md:text-6xl">
             Voices that power a nation
@@ -434,15 +723,23 @@ function CTASection() {
               Empower Bharat with Voice.
             </h2>
             <p className="mx-auto mb-14 max-w-xl text-center text-lg leading-relaxed text-white/80 md:text-xl">
-              Deploy Vak Sahayak in your organization and bridge the digital language gap for every
-              citizen.
+              Fill government forms by voice or phone call - and help every citizen in Bharat do the
+              same, in their own language.
             </p>
-            <Link
-              href="/portal"
-              className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-sm sm:text-lg font-medium text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110"
-            >
-              Get Started Now
-            </Link>
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <Link
+                href="/portal/voice"
+                className="rounded-full bg-gradient-to-b from-[#e2e8f4] to-[#c1ccdf] px-12 py-5 text-sm font-medium text-[#1c2130] shadow-[inset_0_-2px_10px_rgba(0,0,0,0.1),_0_10px_20px_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:brightness-110 sm:text-lg"
+              >
+                Start by Voice
+              </Link>
+              <Link
+                href="/portal/call"
+                className="rounded-full border border-white/30 bg-white/10 px-12 py-5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/20 sm:text-lg"
+              >
+                Get a Call
+              </Link>
+            </div>
           </div>
           <div className="pointer-events-none absolute -bottom-16 left-1/2 h-64 w-64 -translate-x-1/2">
             <img
@@ -470,6 +767,9 @@ export default function MarketingPage() {
 
         {/* --- PITCH DECK SLIDES --- */}
         <VisionSection />
+        <VoiceFeatureSection />
+        <CallFeatureSection />
+        <WhoItsForSection />
         <TechnologyPipeline />
         <ImpactSection />
         <LinguisticMosaic />

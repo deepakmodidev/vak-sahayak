@@ -27,8 +27,8 @@ export interface FormSchema {
 
 export const FORM_SCHEMAS: Record<string, FormSchema> = {
   aadhaar: {
-    title: 'Aadhaar Card Update',
-    description: 'Update your official Aadhaar identity details.',
+    title: 'Aadhaar Card Application',
+    description: 'Apply for your official Aadhaar identity details.',
     fields: [
       { id: 'full_name', label: 'Full Name', icon: User },
       { id: 'gender', label: 'Gender', icon: Fingerprint },
