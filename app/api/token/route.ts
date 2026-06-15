@@ -7,6 +7,7 @@ import {
 } from 'livekit-server-sdk';
 import { RoomConfiguration } from '@livekit/protocol';
 import { FORM_SCHEMAS } from '@/lib/form-schemas';
+import { auth } from '@/lib/auth/server';
 
 const AGENT_NAME = 'vak-sahayak';
 
@@ -27,15 +28,17 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL;
 export const revalidate = 0;
 
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV !== 'development') {
-    // This token + agent-dispatch endpoint is UNAUTHENTICATED. It's enabled in
-    // production so the Vercel-hosted frontend can mint tokens, but anyone who
-    // can reach this URL can mint LiveKit tokens / dispatch agents against your
-    // project. Add an auth layer + rate limiting before real production use.
-    console.warn('[token] serving an unauthenticated token endpoint in production');
-  }
-
   try {
+    // Auth gate: this token + agent-dispatch endpoint is now behind Neon Auth.
+    // `getSession()` reads the session cookie itself, so the (req: Request)
+    // signature is unchanged. Anyone reaching this URL still needs a valid
+    // session to mint LiveKit tokens / dispatch agents. (Rate limiting is still
+    // recommended before real production use.)
+    const { data: session } = await auth.getSession();
+    if (!session?.user) {
+      return new NextResponse('UNAUTHORIZED', { status: 401 });
+    }
+
     if (!LIVEKIT_URL) throw new Error('LIVEKIT_URL is not defined');
     if (!API_KEY) throw new Error('LIVEKIT_API_KEY is not defined');
     if (!API_SECRET) throw new Error('LIVEKIT_API_SECRET is not defined');

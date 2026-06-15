@@ -44,11 +44,11 @@ export const WelcomeView = ({
   return (
     <div
       className={cn(
-        'bg-background flex min-h-[85vh] items-center justify-center px-6 py-12 font-sans',
+        'bg-background flex min-h-[85vh] flex-col justify-center px-6 py-12 font-sans',
         className
       )}
     >
-      <section className="text-foreground mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-24 lg:grid-cols-2">
+      <section className="text-foreground mx-auto grid min-h-[70vh] w-full max-w-6xl grid-cols-1 items-center gap-24 lg:grid-cols-2">
         {/* Left Side: Branding */}
         <div className="flex h-full flex-col items-start justify-between py-8 text-left">
           <div className="space-y-10">

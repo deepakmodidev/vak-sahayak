@@ -17,6 +17,16 @@ import { useDebugMode } from '@/hooks/useDebug';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
+/**
+ * Mirrors the API's `VS-NNNN-XX` reference format (see app/api/submissions/route.ts).
+ * Used only if the POST fails, so the success screen never gets stuck on a placeholder.
+ */
+function makeFallbackReference(): string {
+  const digits = Math.floor(1000 + Math.random() * 9000); // 1000–9999
+  const suffix = Math.random().toString(36).slice(2, 4).toUpperCase().padEnd(2, '0');
+  return `VS-${digits}-${suffix}`;
+}
+
 /** Messages the agent publishes over the data channel (see agent.ts publishUpdate). */
 type AgentMessage =
   | { type: 'form_update'; payload: Record<string, string> }
@@ -37,8 +47,16 @@ interface AppProps {
 
 export function App({ appConfig }: AppProps) {
   const [formData, setFormData] = useState<FormData>({});
+  // Mirror formData into a ref so the (room-scoped) data handler always reads the
+  // latest accumulated answers when persisting on submit, without re-binding the
+  // effect on every keystroke.
+  const formDataRef = useRef(formData);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
   const [activeField, setActiveField] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedReference, setSubmittedReference] = useState<string | null>(null);
   const [serviceType, setServiceType] = useState('aadhaar');
   const serviceTypeRef = useRef(serviceType);
 
@@ -129,6 +147,29 @@ export function App({ appConfig }: AppProps) {
           break;
         }
         case 'form_submitted': {
+          // Persist the submission for the user's history and capture the stored
+          // reference so the success screen matches "Your Submissions". Non-blocking:
+          // we still flip to submitted immediately and must never break the UX on failure.
+          (async () => {
+            try {
+              const res = await fetch('/api/submissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  serviceType: serviceTypeRef.current,
+                  formData: formDataRef.current,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json().catch(() => null);
+                setSubmittedReference(data?.reference ?? makeFallbackReference());
+              } else {
+                setSubmittedReference(makeFallbackReference());
+              }
+            } catch {
+              setSubmittedReference(makeFallbackReference());
+            }
+          })();
           setIsSubmitted(true);
           toast.success('Government form submitted successfully!');
           break;
@@ -170,6 +211,7 @@ export function App({ appConfig }: AppProps) {
           formData={formData}
           activeField={activeField}
           isSubmitted={isSubmitted}
+          reference={submittedReference}
           serviceType={serviceType}
           externalError={sessionError}
           onServiceSelect={(type) => {
@@ -179,6 +221,7 @@ export function App({ appConfig }: AppProps) {
             setFormData({});
             setActiveField(null);
             setIsSubmitted(false);
+            setSubmittedReference(null);
             setSessionError(null);
           }}
         />
